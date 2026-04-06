@@ -75,8 +75,7 @@
   inset: 0;
   background: rgba(0,0,0,0.5);
   z-index: 1000;
-  display: flex;       /* Pastikan display flex aktif */
-  align-items: start;  /* Mengubah posisi dari 'end' ke 'start' */
+   align-items: start;  /* Mengubah posisi dari 'end' ke 'start' */
   justify-content: center;
   padding-top: 20px;   /* Memberi jarak sedikit dari atas layar ponsel */
 }
@@ -203,8 +202,11 @@
     }
 
     function closeModal() {
-      document.getElementById('modalOverlay').classList.add('hidden');
-    }
+  const modal = document.getElementById('general-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
  
 
     /** HALAMAN RIWAYAT **/
@@ -638,10 +640,14 @@ function addItem(autoOpen = true) {
       </button>
     </div>
     <div class="flex gap-2 items-center">
-      <div class="w-16 shrink-0">
-        <input type="number" placeholder="Qty" oninput="calcTotal()" value="1"
-               class="w-full p-2 border rounded-lg text-sm font-bold text-center h-10 outline-none focus:ring-2 focus:ring-blue-100 qty-input">
-      </div>
+      <div class="w-24 shrink-0">
+  <input type="number" 
+         placeholder="Qty" 
+         oninput="calcTotal()" 
+         value="1"
+         onfocus="this.select()" 
+         class="w-full p-2 border-2 border-slate-200 rounded-lg text-sm font-black text-center h-10 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-500 transition-all qty-input">
+</div>
       <div class="flex-1 min-w-0">
         <input type="text" inputmode="numeric" placeholder="Harga" 
                oninput="maskNominal(this); calcTotal()" 
@@ -816,8 +822,7 @@ function addItem(autoOpen = true) {
         setTimeout(() => {
           refreshData(); 
           fetchMasterStock();
-          alert("Transaksi Berhasil Diproses!");
-          changeTab(stayInTab);
+         changeTab(stayInTab);
           showLoading(false);
         }, 1200);
 
@@ -986,8 +991,12 @@ async function fetchUtangList() {
 }
 
 async function bayarUtang(idUtang, sisaLama, namaSupplier) {
-  openModal();
+  // 1. Pastikan modal utama muncul (Gunakan ID yang ada di index.html Anda)
+  const modal = document.getElementById('general-modal');
   const content = document.getElementById('modalContent');
+  
+  if (modal) modal.classList.remove('hidden'); // Membuka modal
+  
   content.innerHTML = `
     <div class="flex flex-col items-center py-10">
       <div class="w-10 h-10 border-4 border-slate-100 border-t-red-600 rounded-full animate-spin"></div>
@@ -999,8 +1008,8 @@ async function bayarUtang(idUtang, sisaLama, namaSupplier) {
     const detailRaw = await response.json();
     let items = typeof detailRaw === 'string' ? JSON.parse(detailRaw) : detailRaw;
 
+    // ... (kode itemsHtml tetap sama seperti punya Anda) ...
     let itemsHtml = `<div class="mt-4 py-4 border-t border-dashed border-slate-200 text-center"><p class="text-[10px] text-slate-400">Rincian barang tidak tersedia</p></div>`;
-    
     if (Array.isArray(items) && items.length > 0) {
       itemsHtml = `
         <div class="mt-4 pt-4 border-t border-slate-100">
@@ -1068,12 +1077,15 @@ async function bayarUtang(idUtang, sisaLama, namaSupplier) {
 }
 
 async function eksekusiPelunasanUtang(id, nominal) {
+  const metodeSelect = document.getElementById('pay_utang_metode');
+  const metode = metodeSelect ? metodeSelect.value : 'Cash';
+
   const payload = {
     action: 'processTransaction',
     type: 'BAYAR_UTANG',
-    idUtang: id,
+    idUtang: id, // Sesuaikan dengan nama variabel di Apps Script (idUtang / idTransaksi)
     nominal: nominal,
-    metode: document.getElementById('pay_utang_metode').value
+    metode: metode
   };
   
   closeModal();
@@ -1086,13 +1098,11 @@ async function eksekusiPelunasanUtang(id, nominal) {
       body: JSON.stringify(payload) 
     });
     
-    // Beri jeda 1.5 detik agar Google Sheet selesai menulis data
     setTimeout(() => {
       refreshData();
-      fetchUtangList();
+      if (typeof fetchUtangList === 'function') fetchUtangList(); // Refresh daftar utang
       showLoading(false);
-      alert("Pembayaran utang ke " + id + " berhasil!");
-    }, 1500);
+         }, 1500);
     
   } catch (e) {
     showLoading(false);
@@ -1268,8 +1278,7 @@ async function saveBayarPiutang(id, sisa) {
       refreshData(); 
       fetchPiutangList(); 
       showLoading(false);
-      alert("Piutang dari " + id + " telah berhasil dilunasi!");
-    }, 1500);
+         }, 1500);
   } 
   catch(e) { 
     showLoading(false);
@@ -1378,8 +1387,7 @@ async function saveTransfer() {
       refreshData();
       showTransferForm(); 
       showLoading(false);
-      alert("Transfer dari " + dari + " ke " + ke + " berhasil diproses.");
-    }, 1500);
+         }, 1500);
 
   } catch (e) {
     showLoading(false);
