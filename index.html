@@ -123,7 +123,7 @@
   </div>
 
 <div id="general-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-  <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+  <div class="bg-white w-full rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
     <div id="modalContent" class="p-6">
       </div>
   </div>
@@ -131,7 +131,7 @@
   
 
   <header class="bg-white border-b sticky top-0 z-50 p-4 shadow-sm">
-    <div class="max-w-md mx-auto flex justify-between items-center">
+    <div class="mx-auto flex justify-between items-center">
       <div>
         <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Saldo Kas</p>
         <h1 id="total-balance" class="text-xl font-bold text-slate-800">Rp 0</h1>
@@ -147,7 +147,7 @@
     </div>
   </header>
 
-  <main id="main-content" class="max-w-md mx-auto p-4 page-transition">
+  <main id="main-content" class="mx-auto p-4 page-transition">
     <div id="menu-container" class="space-y-4"></div>
   </main>
 
@@ -202,7 +202,7 @@
     function renderRiwayatPage() {
       const container = document.getElementById('menu-container');
       container.innerHTML = `
-        <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="overflow-hidden">
           <div class="p-4 border-b flex flex-col gap-3">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                            <div class="flex flex-wrap gap-1 text-[10px] items-center">
@@ -444,7 +444,7 @@
   } 
   else if (tab === 'penjualan') {
     menuContainer.innerHTML = `
-      <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4 page-transition">
+      <div class="space-y-4 page-transition">
         <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="shopping-cart" class="w-5 text-blue-600"></i> Penjualan Baru</h2>
         <div class="grid grid-cols-1 gap-2">
           <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Pelanggan</label>
@@ -496,7 +496,7 @@
   } 
   else if (tab === 'pembelian') {
     menuContainer.innerHTML = `
-      <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4 page-transition">
+      <div class="space-y-4 page-transition">
         <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="truck" class="text-red-600"></i> Pembelian Barang</h2>
         <div class="space-y-4">
           <input id="b_supp" type="text" placeholder="NAMA SUPPLIER" 
@@ -536,7 +536,7 @@
   }
   else if (tab === 'operasional') {
     menuContainer.innerHTML = `
-      <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4 page-transition">
+      <div class="space-y-4 page-transition">
         <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="calculator" class="text-orange-600"></i> Pengeluaran Biaya</h2>
         <div class="space-y-4">
           <select id="op_metode" class="w-full p-3 bg-slate-50 border-none rounded-xl bg-white font-bold text-slate-700 focus:ring-2 focus:ring-orange-500 outline-none appearance-none">
@@ -570,7 +570,7 @@
   }
   else if (tab === 'lainnya') {
     menuContainer.innerHTML = `
-      <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-6 page-transition">
+      <div class="space-y-6 page-transition">
         <h2 class="text-lg font-bold flex items-center gap-2 text-slate-700">
           <i data-lucide="grid" class="w-5"></i> Administrasi & Keuangan
         </h2>
