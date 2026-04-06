@@ -20,6 +20,30 @@
     .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 5.5rem); }
     input, select, textarea { font-size: 16px !important; }
     .accounting { text-align: right; font-family: monospace; }
+
+    /* Efek untuk tombol menu 'Lainnya' yang aktif */
+/* Style Tombol Aktif di Menu Lainnya */
+.action-btn-active {
+  background-color: #ffffff !important;
+  transform: scale(0.95);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Garis bawah indikator untuk tombol aktif */
+.action-btn-active::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  width: 12px;
+  height: 3px;
+  border-radius: 99px;
+  background-color: currentColor;
+}
+
+/* Animasi Ikon saat aktif */
+.action-btn-active .icon-box {
+  transform: scale(1.1);
+}
     
     #loading-overlay {
       display: none;
@@ -42,6 +66,7 @@
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+    
     /* Modal Styles */
     .modal-backdrop {
       display: none;
@@ -97,12 +122,12 @@
     </div>
   </div>
 
-<div id="general-modal" class="modal-backdrop" onclick="closeModal(event)">
-    <div class="modal-content p-6 shadow-2xl" onclick="event.stopPropagation()">
-      <div id="modalContent">
-        </div>
-    </div>
+<div id="general-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+  <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+    <div id="modalContent" class="p-6">
+      </div>
   </div>
+</div>
   
 
   <header class="bg-white border-b sticky top-0 z-50 p-4 shadow-sm">
@@ -150,7 +175,7 @@
   </nav>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx-v5em17c8x81pp6IrIVitKkbi42yNPtjul1BP9OO_cjtb-qmX_jNk--zmpfSQz_LAOg/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzq0QBSEYMrKr03dhcjPMryLbt9ecznGUWk17jWbGGFjqePYlTsCpUSKVdSQMFnnNxAAQ/exec";
 
     let productMaster = [];
     let currentTargetInputId = null;
@@ -307,48 +332,47 @@
           </div>
         `;
       }
-        else if (tab === 'lainnya') {
+       else if (tab === 'lainnya') {
         menuContainer.innerHTML = `
-          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-6 page-transition">
             <h2 class="text-lg font-bold flex items-center gap-2 text-slate-700">
               <i data-lucide="grid" class="w-5"></i> Administrasi & Keuangan
             </h2>
-            
-            <div class="grid grid-cols-4 gap-2">
-              <button onclick="showMenuAction('UTANG')" class="flex flex-col items-center p-3 bg-amber-50 border border-amber-100 rounded-2xl active:scale-95 transition-all gap-1">
-                <div class="p-2 bg-amber-100 rounded-xl text-amber-600">
-                  <i data-lucide="book-open" class="w-4 h-4"></i>
-                </div>
-                <span class="text-[9px] font-black text-amber-800 uppercase tracking-tighter text-center leading-tight">Utang</span>
-              </button>
+                    
+<div class="grid grid-cols-4 gap-2">
+  <button onclick="showMenuAction('UTANG', this)" class="action-btn flex flex-col items-center p-3 bg-amber-50 border border-amber-100 rounded-2xl active:scale-95 transition-all gap-1">
+    <div class="icon-box p-2 bg-amber-100 rounded-xl text-amber-600 transition-transform">
+      <i data-lucide="book-open" class="w-4 h-4"></i>
+    </div>
+    <span class="text-[9px] font-black text-amber-800 uppercase tracking-tighter text-center">Utang</span>
+  </button>
 
-              <button onclick="showMenuAction('PIUTANG')" class="flex flex-col items-center p-3 bg-emerald-50 border border-emerald-100 rounded-2xl active:scale-95 transition-all gap-1">
-                <div class="p-2 bg-emerald-100 rounded-xl text-emerald-600">
-                  <i data-lucide="wallet" class="w-4 h-4"></i>
-                </div>
-                <span class="text-[9px] font-black text-emerald-800 uppercase tracking-tighter text-center leading-tight">Piutang</span>
-              </button>
+  <button onclick="showMenuAction('PIUTANG', this)" class="action-btn flex flex-col items-center p-3 bg-emerald-50 border border-emerald-100 rounded-2xl active:scale-95 transition-all gap-1">
+    <div class="icon-box p-2 bg-emerald-100 rounded-xl text-emerald-600 transition-transform">
+      <i data-lucide="wallet" class="w-4 h-4"></i>
+    </div>
+    <span class="text-[9px] font-black text-emerald-800 uppercase tracking-tighter text-center">Piutang</span>
+  </button>
 
-              <button onclick="showMenuAction('TRANSFER')" class="flex flex-col items-center p-3 bg-blue-50 border border-blue-100 rounded-2xl active:scale-95 transition-all gap-1">
-                <div class="p-2 bg-blue-100 rounded-xl text-blue-600">
-                  <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
-                </div>
-                <span class="text-[9px] font-black text-blue-800 uppercase tracking-tighter text-center leading-tight">Tf Saldo</span>
-              </button>
+  <button onclick="showMenuAction('TRANSFER', this)" class="action-btn flex flex-col items-center p-3 bg-blue-50 border border-blue-100 rounded-2xl active:scale-95 transition-all gap-1">
+    <div class="icon-box p-2 bg-blue-100 rounded-xl text-blue-600 transition-transform">
+      <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+    </div>
+    <span class="text-[9px] font-black text-blue-800 uppercase tracking-tighter text-center">Tf Saldo</span>
+  </button>
 
-              <button onclick="showMenuAction('CANCEL')" class="flex flex-col items-center p-3 bg-rose-50 border border-rose-100 rounded-2xl active:scale-95 transition-all gap-1">
-                <div class="p-2 bg-rose-100 rounded-xl text-rose-600">
-                  <i data-lucide="x-circle" class="w-4 h-4"></i>
-                </div>
-                <span class="text-[9px] font-black text-rose-800 uppercase tracking-tighter text-center leading-tight">Batal</span>
-              </button>
+  <button onclick="showMenuAction('CANCEL', this)" class="action-btn flex flex-col items-center p-3 bg-rose-50 border border-rose-100 rounded-2xl active:scale-95 transition-all gap-1">
+    <div class="icon-box p-2 bg-rose-100 rounded-xl text-rose-600 transition-transform">
+      <i data-lucide="x-circle" class="w-4 h-4"></i>
+    </div>
+    <span class="text-[9px] font-black text-rose-800 uppercase tracking-tighter text-center">Batal</span>
+  </button>
+</div>
+            <div id="action-form-container" class="mt-4 hidden p-5 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in slide-in-from-top-2 duration-300">
             </div>
 
-            <div id="action-form-container" class="mt-4 hidden p-5 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in slide-in-from-top-2 duration-300">
-              </div>
-
             <div class="pt-4 border-t border-slate-100">
-               <button onclick="location.reload()" class="w-full p-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+               <button onclick="location.reload()" class="w-full p-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
                  <i data-lucide="refresh-cw" class="w-4 h-4"></i> Muat Ulang Aplikasi
                </button>
             </div>
@@ -356,11 +380,10 @@
         `;
       }
       else {
-        menuContainer.innerHTML = `<div class="p-10 text-center text-slate-400">Halaman sedang disiapkan.</div>`;
+        menuContainer.innerHTML = `<div class="p-10 text-center text-slate-400 font-bold uppercase text-xs tracking-widest">Halaman sedang disiapkan.</div>`;
       }
       lucide.createIcons();
     }
-
     function addItem(autoOpen = true) {
       const id = Date.now();
       const div = document.createElement('div');
@@ -622,20 +645,38 @@
       runScript('saveOperasional', payload, 'operasional');
     }
 
-    function showMenuAction(type) {
-      const container = document.getElementById('action-form-container');
-      container.classList.remove('hidden');
-      
-      if (type === 'UTANG') {
-        fetchUtangList();
-        } else if (type === 'PIUTANG') {
-    fetchPiutangList(); // Tambahkan baris ini
-      } else {
-        container.innerHTML = `<div class="p-10 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">Fitur ${type} Segera Hadir</div>`;
-      }
-      lucide.createIcons();
-    }
+  function showMenuAction(type, element) {
+  const container = document.getElementById('action-form-container');
+  container.classList.remove('hidden');
+  
+  // 1. Reset semua tombol di grid
+  const allButtons = document.querySelectorAll('.action-btn');
+  allButtons.forEach(btn => {
+    btn.classList.remove('action-btn-active', 'ring-2', 'ring-offset-2', 'ring-amber-400', 'ring-emerald-400', 'ring-blue-400', 'ring-rose-400');
+  });
 
+  // 2. Terapkan style aktif sesuai tipe
+  if (element) {
+    element.classList.add('action-btn-active', 'relative');
+    
+    // Tentukan warna ring berdasarkan tipe
+    let ringColor = 'ring-slate-400';
+    if (type === 'UTANG') ringColor = 'ring-amber-400';
+    if (type === 'PIUTANG') ringColor = 'ring-emerald-400';
+    if (type === 'TRANSFER') ringColor = 'ring-blue-400';
+    if (type === 'CANCEL') ringColor = 'ring-rose-400';
+    
+    element.classList.add('ring-2', ringColor, 'ring-offset-1');
+  }
+
+  // 3. Panggil Konten
+  if (type === 'UTANG') fetchUtangList();
+  else if (type === 'PIUTANG') fetchPiutangList();
+  else if (type === 'TRANSFER') showTransferForm();
+  else if (type === 'CANCEL') fetchCancelList();
+
+  lucide.createIcons();
+}
     // --- UTILITY FUNCTIONS ---
     function formatRupiah(angka) {
       return "Rp " + new Intl.NumberFormat('id-ID').format(angka);
@@ -651,138 +692,197 @@
       }
     }
 
-    // --- LOGIKA UTANG ---
-    async function bayarUtang(idUtang, sisaLama, namaSupplier) {
-      openModal();
-      const content = document.getElementById('modalContent');
-      content.innerHTML = `<div class="p-10 text-center"><div class="spinner mx-auto mb-4"></div><p class="text-slate-500">Mengambil rincian...</p></div>`;
+// --- FUNGSI PEMBANTU MODAL ---
+function openModal() {
+  const modal = document.getElementById('general-modal');
+  modal.classList.remove('hidden');
+}
 
-      try {
-        const response = await fetch(`${WEB_APP_URL}?action=getDetail&id=${encodeURIComponent(idUtang)}`);
-        const detailRaw = await response.json();
-        let items = typeof detailRaw === 'string' ? JSON.parse(detailRaw) : detailRaw;
+function closeModal() {
+  const modal = document.getElementById('general-modal');
+  modal.classList.add('hidden');
+}
 
-        let itemsHtml = `<div class="mt-3 text-center py-4 border-t border-dotted"><p class="text-xs text-slate-400">Rincian tidak tersedia</p></div>`;
-        if (Array.isArray(items) && items.length > 0) {
-          itemsHtml = `
-            <div class="mt-3 pt-3 border-t border-slate-200">
-              <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Rincian Barang:</p>
-              <div class="max-h-32 overflow-y-auto space-y-1.5">
-                ${items.map(it => `
-                  <div class="flex justify-between text-xs items-center">
-                    <span class="text-slate-600 truncate mr-2">${it.nama} <span class="text-[10px] text-slate-300">x${it.qty}</span></span>
-                    <span class="font-bold text-slate-700">${formatRupiah(it.harga * it.qty)}</span>
-                  </div>
-                `).join('')}
+// --- LOGIKA UTANG (TEROPTIMASI) ---
+async function fetchUtangList() {
+  const container = document.getElementById('action-form-container');
+  container.innerHTML = `
+    <div class="p-8 text-center">
+      <div class="w-8 h-8 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mx-auto mb-3"></div>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Sinkronisasi Utang...</p>
+    </div>`;
+
+  try {
+    // Menambahkan timestamp agar data selalu fresh
+    const res = await fetch(`${WEB_APP_URL}?action=getActivePayables&_=${Date.now()}`);
+    const rawData = await res.json();
+    
+    // Filter hanya yang sisa utangnya > 0
+    const data = rawData.filter(u => (parseFloat(u.Sisa_Utang) || 0) > 0);
+    
+    if (data.length === 0) {
+      container.innerHTML = `
+        <div class="p-8 text-center bg-emerald-50 rounded-3xl border-2 border-emerald-100/50 page-transition">
+          <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i data-lucide="shield-check" class="text-emerald-600"></i>
+          </div>
+          <p class="text-sm font-black text-emerald-800">Luar Biasa!</p>
+          <p class="text-[11px] text-emerald-600/70 font-medium">Semua kewajiban utang telah diselesaikan.</p>
+        </div>`;
+    } else {
+      container.innerHTML = `
+        <div class="flex justify-between items-center mb-3 px-1">
+          <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Utang Supplier (${data.length})</h3>
+          <span class="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">Belum Lunas</span>
+        </div>
+        <div class="grid gap-2 page-transition">
+          ${data.map(u => `
+            <div onclick="bayarUtang('${u.ID_Pembelian}', ${u.Sisa_Utang}, '${u.Supplier}')" 
+                 class="group p-4 bg-white border border-slate-200 rounded-2xl flex justify-between items-center active:scale-[0.97] transition-all hover:border-red-300 hover:shadow-md cursor-pointer">
+              <div class="flex-1 pr-4">
+                <p class="font-bold text-slate-800 text-sm group-hover:text-red-600 transition-colors">${u.Supplier}</p>
+                <p class="text-[10px] text-slate-400 font-mono mt-0.5">${u.ID_Pembelian}</p>
               </div>
-            </div>`;
-        }
-
-        content.innerHTML = `
-          <div class="p-2">
-            <h2 class="text-xl font-bold text-red-600 mb-2 flex items-center gap-2"><i data-lucide="shield-check"></i> Pelunasan Utang</h2>
-            <div class="bg-white border-2 border-red-100 rounded-2xl p-4 mb-4">
-              <div class="flex justify-between items-start border-b pb-2 mb-2">
-                <div><p class="text-[10px] font-bold text-slate-400">SUPPLIER</p><h3 class="font-bold text-slate-800">${namaSupplier}</h3></div>
-                <p class="text-[10px] font-mono bg-slate-100 px-2 py-0.5 rounded">${idUtang}</p>
-              </div>
-              ${itemsHtml}
-              <div class="mt-4 bg-red-50 p-3 rounded-xl flex justify-between items-center">
-                <span class="text-sm font-bold text-red-800">Total Lunas:</span>
-                <span class="text-xl font-black text-red-600">${formatRupiah(sisaLama)}</span>
+              <div class="text-right">
+                <p class="text-sm font-black text-red-600">${formatRupiah(u.Sisa_Utang)}</p>
+                <p class="text-[9px] font-bold text-slate-300 uppercase flex items-center justify-end gap-1">
+                  Bayar <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                </p>
               </div>
             </div>
-            <div class="space-y-3">
-              <select id="pay_utang_metode" class="w-full p-3.5 border-2 border-slate-100 rounded-xl font-bold bg-slate-50 outline-none">
-                <option value="Cash">Cash (Tunai)</option><option value="Rekening">Rekening (Transfer)</option>
-              </select>
-              <div class="flex gap-2">
-                <button onclick="closeModal()" class="flex-1 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-xl">Batal</button>
-                <button onclick="eksekusiPelunasanUtang('${idUtang}', ${sisaLama})" class="flex-[2] py-3.5 bg-red-600 text-white font-bold rounded-xl shadow-lg">Bayar Lunas</button>
+          `).join('')}
+        </div>`;
+    }
+    lucide.createIcons();
+  } catch (e) {
+    container.innerHTML = `<div class="p-6 text-center text-red-500 font-bold text-xs bg-red-50 rounded-2xl">Gagal memuat data. Periksa koneksi internet.</div>`;
+  }
+}
+
+async function bayarUtang(idUtang, sisaLama, namaSupplier) {
+  openModal();
+  const content = document.getElementById('modalContent');
+  content.innerHTML = `
+    <div class="flex flex-col items-center py-10">
+      <div class="w-10 h-10 border-4 border-slate-100 border-t-red-600 rounded-full animate-spin"></div>
+      <p class="mt-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Memuat Detail...</p>
+    </div>`;
+
+  try {
+    const response = await fetch(`${WEB_APP_URL}?action=getDetail&id=${encodeURIComponent(idUtang)}`);
+    const detailRaw = await response.json();
+    let items = typeof detailRaw === 'string' ? JSON.parse(detailRaw) : detailRaw;
+
+    let itemsHtml = `<div class="mt-4 py-4 border-t border-dashed border-slate-200 text-center"><p class="text-[10px] text-slate-400">Rincian barang tidak tersedia</p></div>`;
+    
+    if (Array.isArray(items) && items.length > 0) {
+      itemsHtml = `
+        <div class="mt-4 pt-4 border-t border-slate-100">
+          <p class="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-tighter">Item yang Dibeli:</p>
+          <div class="max-h-40 overflow-y-auto space-y-2 pr-1">
+            ${items.map(it => `
+              <div class="flex justify-between text-xs items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <span class="text-slate-700 font-medium truncate flex-1 mr-2">${it.nama} <span class="text-slate-300 font-bold ml-1">x${it.qty}</span></span>
+                <span class="font-bold text-slate-800">${formatRupiah(it.harga * it.qty)}</span>
               </div>
+            `).join('')}
+          </div>
+        </div>`;
+    }
+
+    content.innerHTML = `
+      <div class="space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-red-600">
+            <i data-lucide="receipt"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-black text-slate-800 leading-none">Pelunasan Utang</h2>
+            <p class="text-[10px] text-slate-400 font-medium uppercase mt-1">Konfirmasi Pembayaran Supplier</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
+          <div class="absolute top-0 right-0 p-2 opacity-10"><i data-lucide="wallet" class="w-12 h-12"></i></div>
+          <div class="relative z-10">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${namaSupplier}</p>
+            <p class="text-[9px] font-mono text-slate-500 mb-2">${idUtang}</p>
+            <div class="flex justify-between items-end border-t border-slate-800 pt-3 mt-1">
+              <span class="text-xs text-slate-400">Total Tagihan:</span>
+              <span class="text-xl font-black text-red-400">${formatRupiah(sisaLama)}</span>
             </div>
           </div>
-        `;
-        lucide.createIcons();
-      } catch (e) {
-        content.innerHTML = `<div class="p-6 text-center text-red-500">Error: ${e.message}</div>`;
-      }
-    }
+        </div>
 
-    async function eksekusiPelunasanUtang(id, nominal) {
-      const payload = {
-        action: 'processTransaction',
-        type: 'BAYAR_UTANG',
-        idUtang: id,
-        nominal: nominal,
-        metode: document.getElementById('pay_utang_metode').value
-      };
-      closeModal();
-      showLoading(true);
-      try {
-        // Menggunakan mode 'no-cors' jika Apps Script tidak memberikan response JSON balik, 
-        // namun untuk sinkronisasi data lebih baik tanpa no-cors jika memungkinkan.
-        await fetch(WEB_APP_URL, { 
-          method: "POST", 
-          mode: "no-cors",
-          body: JSON.stringify(payload) 
-        });
-        
-        setTimeout(() => {
-          refreshData();
-          fetchUtangList();
-          showLoading(false);
-          alert("Pembayaran utang berhasil dicatat!");
-        }, 1500);
-      } catch (e) {
-        showLoading(false);
-        alert("Gagal memproses pembayaran.");
-      }
-    }
+        ${itemsHtml}
 
-    async function fetchUtangList() {
-      const container = document.getElementById('action-form-container');
-      container.innerHTML = `<div class="p-4 text-center text-slate-400">Memuat data utang...</div>`;
-      try {
-        const res = await fetch(`${WEB_APP_URL}?action=getActivePayables&_=${Date.now()}`);
-        const rawData = await res.json();
-        
-        const data = rawData.filter(u => (parseFloat(u.Sisa_Utang) || 0) > 0);
-        
-        if (data.length === 0) {
-          container.innerHTML = `<div class="p-6 text-center bg-emerald-50 rounded-2xl border border-emerald-100">
-            <i data-lucide="check-circle" class="w-8 h-8 text-emerald-500 mx-auto mb-2"></i>
-            <p class="text-sm font-bold text-emerald-800">Semua utang sudah lunas!</p>
-          </div>`;
-        } else {
-          container.innerHTML = `
-            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Daftar Utang Aktif</h3>
-            <div class="space-y-2">
-              ${data.map(u => `
-                <div onclick="bayarUtang('${u.ID_Pembelian}', ${u.Sisa_Utang}, '${u.Supplier}')" class="p-4 bg-white border border-slate-200 rounded-2xl flex justify-between items-center active:scale-95 cursor-pointer hover:border-red-200 transition-colors">
-                  <div>
-                    <p class="font-black text-slate-800 leading-tight">${u.Supplier}</p>
-                    <p class="text-[9px] text-slate-400 font-mono">${u.ID_Pembelian}</p>
-                  </div>
-                  <div class="text-right">
-                    <p class="text-sm font-black text-red-600">${formatRupiah(u.Sisa_Utang)}</p>
-                    <p class="text-[8px] font-bold text-slate-300 uppercase">Klik Bayar</p>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          `;
-        }
-        lucide.createIcons();
-      } catch (e) {
-        container.innerHTML = `<p class="text-red-500 p-4">Gagal memuat data dari server.</p>`;
-      }
-    }
+        <div class="space-y-3 pt-2">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Metode Pembayaran</label>
+            <select id="pay_utang_metode" class="w-full mt-1 p-3.5 border-2 border-slate-100 rounded-xl font-bold bg-slate-50 text-slate-800 outline-none focus:border-red-300 transition-all appearance-none">
+              <option value="Cash">Cash (Tunai)</option>
+              <option value="Rekening">Rekening (Transfer)</option>
+            </select>
+          </div>
+          
+          <div class="flex gap-2">
+            <button onclick="closeModal()" class="flex-1 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl active:scale-95 transition-transform">Batal</button>
+            <button onclick="eksekusiPelunasanUtang('${idUtang}', ${sisaLama})" 
+                    class="flex-[2] py-4 bg-red-600 text-white font-bold rounded-2xl shadow-lg shadow-red-200 active:scale-95 transition-all">
+              Bayar Lunas
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+  } catch (e) {
+    content.innerHTML = `<div class="p-10 text-center text-red-500 font-bold">Error: ${e.message}</div>`;
+  }
+}
 
+async function eksekusiPelunasanUtang(id, nominal) {
+  const payload = {
+    action: 'processTransaction',
+    type: 'BAYAR_UTANG',
+    idUtang: id,
+    nominal: nominal,
+    metode: document.getElementById('pay_utang_metode').value
+  };
+  
+  closeModal();
+  showLoading(true);
+  
+  try {
+    await fetch(WEB_APP_URL, { 
+      method: "POST", 
+      mode: "no-cors", 
+      body: JSON.stringify(payload) 
+    });
+    
+    // Beri jeda 1.5 detik agar Google Sheet selesai menulis data
+    setTimeout(() => {
+      refreshData();
+      fetchUtangList();
+      showLoading(false);
+      alert("Pembayaran utang ke " + id + " berhasil!");
+    }, 1500);
+    
+  } catch (e) {
+    showLoading(false);
+    alert("Koneksi gagal. Silakan coba lagi.");
+  }
+}
+    
     // --- LOGIKA PIUTANG ---
 async function fetchPiutangList() {
   const container = document.getElementById('action-form-container');
-  container.innerHTML = `<div class="p-4 text-center text-slate-400"><div class="spinner mx-auto w-6 h-6 mb-2"></div>Memindai database piutang...</div>`;
+  // Loading state yang lebih modern
+  container.innerHTML = `
+    <div class="p-8 text-center">
+      <div class="w-8 h-8 border-4 border-slate-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-3"></div>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Memindai Piutang...</p>
+    </div>`;
   
   try {
     const response = await fetch(`${WEB_APP_URL}?action=getActiveReceivables&_=${Date.now()}`);
@@ -792,53 +892,131 @@ async function fetchPiutangList() {
     const activePiutang = dataList.filter(p => (parseFloat(p.sisa) || 0) > 0);
     
     if (activePiutang.length === 0) {
-      container.innerHTML = `<div class="p-6 text-center bg-emerald-50 rounded-2xl border border-emerald-100"><i data-lucide="check-circle" class="w-8 h-8 text-emerald-500 mx-auto mb-2"></i><p class="text-sm font-bold text-emerald-800">Semua piutang sudah lunas!</p></div>`;
+      container.innerHTML = `
+        <div class="p-8 text-center bg-emerald-50 rounded-3xl border-2 border-emerald-100/50 page-transition">
+          <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i data-lucide="check-circle" class="text-emerald-600"></i>
+          </div>
+          <p class="text-sm font-black text-emerald-800">Semua Lunas!</p>
+          <p class="text-[11px] text-emerald-600/70 font-medium">Tidak ada piutang aktif saat ini.</p>
+        </div>`;
     } else {
       container.innerHTML = `
-        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Daftar Piutang Aktif</h3>
-        <div class="space-y-2">
+        <div class="flex justify-between items-center mb-3 px-1">
+          <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Piutang Pelanggan (${activePiutang.length})</h3>
+          <span class="text-[9px] bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full font-bold">Aktif</span>
+        </div>
+        <div class="grid gap-2 page-transition">
           ${activePiutang.map(p => `
-            <div onclick="bayarPiutang('${p.id}', ${p.sisa}, '${p.nama}')" class="p-4 bg-white border border-slate-200 rounded-2xl flex justify-between items-center active:scale-95 cursor-pointer hover:border-purple-200 transition-colors">
-              <div><p class="font-black text-slate-800 leading-tight">${p.nama || 'Tanpa Nama'}</p><p class="text-[9px] text-slate-400 font-mono">${p.id}</p></div>
-              <div class="text-right"><p class="text-sm font-black text-purple-600">${formatRupiah(p.sisa)}</p><p class="text-[8px] font-bold text-slate-300 uppercase tracking-tight">Bayar Lunas</p></div>
+            <div onclick="bayarPiutang('${p.id}', ${p.sisa}, '${p.nama}')" 
+                 class="group p-4 bg-white border border-slate-200 rounded-2xl flex justify-between items-center active:scale-[0.97] transition-all hover:border-purple-300 hover:shadow-md cursor-pointer">
+              <div class="flex-1 pr-4">
+                <p class="font-bold text-slate-800 text-sm group-hover:text-purple-600 transition-colors">${p.nama || 'Tanpa Nama'}</p>
+                <p class="text-[10px] text-slate-400 font-mono mt-0.5">${p.id}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-sm font-black text-purple-600">${formatRupiah(p.sisa)}</p>
+                <p class="text-[9px] font-bold text-slate-300 uppercase flex items-center justify-end gap-1">
+                  Detail <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                </p>
+              </div>
             </div>
           `).join('')}
         </div>`;
     }
   } catch (err) {
-    container.innerHTML = `<div class="p-10 text-center text-red-500 font-bold text-xs uppercase tracking-widest">Gagal terhubung ke server.</div>`;
+    container.innerHTML = `
+      <div class="p-10 text-center bg-red-50 rounded-2xl border border-red-100">
+        <p class="text-red-500 font-bold text-xs uppercase tracking-widest">Gagal terhubung ke server.</p>
+      </div>`;
   }
   lucide.createIcons();
 }
 
-function bayarPiutang(id, sisa, nama) {
+    // --- LOGIKA PIUTANG (DENGAN RINCIAN BARANG) ---
+async function bayarPiutang(id, sisa, nama) {
   openModal();
   const content = document.getElementById('modalContent');
+  
+  // Tampilan Loading awal
   content.innerHTML = `
-    <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-purple-600"><i data-lucide="hand-coins"></i> Pelunasan Piutang</h2>
-    <div class="space-y-4">
-      <div class="bg-purple-50 p-4 rounded-xl">
-        <p class="text-[10px] font-bold text-purple-400 uppercase">PELANGGAN</p>
-        <h3 class="font-black text-slate-800">${nama}</h3>
-        <div class="flex justify-between mt-2 pt-2 border-t border-purple-100">
-            <span class="text-xs font-bold text-slate-500">Sisa Piutang:</span>
-            <span class="text-sm font-black text-purple-700">${formatRupiah(sisa)}</span>
-        </div>
-      </div>
-      <div class="space-y-3">
-        <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Metode Penerimaan</label>
-          <select id="pi_metode" class="w-full p-3.5 border-2 border-slate-100 rounded-xl bg-slate-50 font-bold outline-none">
-            <option value="Cash">Cash (Tunai)</option><option value="Rekening">Rekening (Transfer)</option>
-          </select>
-        </div>
-        <div class="flex gap-2 pt-2">
-          <button onclick="closeModal()" class="flex-1 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl">Batal</button>
-          <button onclick="saveBayarPiutang('${id}', ${sisa})" class="flex-[2] py-4 bg-purple-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition">Bayar Lunas Sekarang</button>
-        </div>
-      </div>
+    <div class="flex flex-col items-center py-10">
+      <div class="w-10 h-10 border-4 border-slate-100 border-t-purple-600 rounded-full animate-spin"></div>
+      <p class="mt-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Memuat Rincian Piutang...</p>
     </div>`;
-  lucide.createIcons();
+
+  try {
+    // Mengambil rincian barang dari database transaksi menggunakan ID Penjualan
+    const response = await fetch(`${WEB_APP_URL}?action=getDetail&id=${encodeURIComponent(id)}`);
+    const detailRaw = await response.json();
+    let items = typeof detailRaw === 'string' ? JSON.parse(detailRaw) : detailRaw;
+
+    let itemsHtml = `<div class="mt-4 py-4 border-t border-dashed border-slate-200 text-center"><p class="text-[10px] text-slate-400">Rincian barang tidak ditemukan</p></div>`;
+    
+    if (Array.isArray(items) && items.length > 0) {
+      itemsHtml = `
+        <div class="mt-4 pt-4 border-t border-slate-100">
+          <p class="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-tighter">Barang yang Dibeli Pelanggan:</p>
+          <div class="max-h-40 overflow-y-auto space-y-2 pr-1">
+            ${items.map(it => `
+              <div class="flex justify-between text-xs items-center bg-purple-50/50 p-2 rounded-lg border border-purple-100">
+                <span class="text-slate-700 font-medium truncate flex-1 mr-2">${it.nama} <span class="text-purple-400 font-bold ml-1">x${it.qty}</span></span>
+                <span class="font-bold text-slate-800">${formatRupiah(it.harga * it.qty)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+    }
+
+    content.innerHTML = `
+      <div class="space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600">
+            <i data-lucide="hand-coins"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-black text-slate-800 leading-none">Pelunasan Piutang</h2>
+            <p class="text-[10px] text-slate-400 font-medium uppercase mt-1">Penerimaan Pembayaran Pelanggan</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
+          <div class="absolute top-0 right-0 p-2 opacity-10"><i data-lucide="user" class="w-12 h-12"></i></div>
+          <div class="relative z-10">
+            <p class="text-[10px] font-bold text-purple-300 uppercase tracking-widest">${nama || 'Pelanggan Umum'}</p>
+            <p class="text-[9px] font-mono text-slate-500 mb-2">${id}</p>
+            <div class="flex justify-between items-end border-t border-slate-800 pt-3 mt-1">
+              <span class="text-xs text-slate-400">Sisa Piutang:</span>
+              <span class="text-xl font-black text-purple-400">${formatRupiah(sisa)}</span>
+            </div>
+          </div>
+        </div>
+
+        ${itemsHtml}
+
+        <div class="space-y-3 pt-2">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Metode Penerimaan</label>
+            <select id="pi_metode" class="w-full mt-1 p-3.5 border-2 border-slate-100 rounded-xl font-bold bg-slate-50 text-slate-800 outline-none focus:border-purple-300 transition-all appearance-none">
+              <option value="Cash">Cash (Tunai)</option>
+              <option value="Rekening">Rekening (Transfer)</option>
+            </select>
+          </div>
+          
+          <div class="flex gap-2">
+            <button onclick="closeModal()" class="flex-1 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl active:scale-95 transition-transform">Batal</button>
+            <button onclick="saveBayarPiutang('${id}', ${sisa})" 
+                    class="flex-[2] py-4 bg-purple-600 text-white font-bold rounded-2xl shadow-lg shadow-purple-200 active:scale-95 transition-all">
+              Terima Pelunasan
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+  } catch (e) {
+    content.innerHTML = `<div class="p-10 text-center text-red-500 font-bold">Gagal memuat detail: ${e.message}</div>`;
+  }
 }
 
 async function saveBayarPiutang(id, sisa) {
@@ -849,29 +1027,258 @@ async function saveBayarPiutang(id, sisa) {
     nominal: sisa, 
     metode: document.getElementById('pi_metode').value 
   };
+  
   closeModal(); 
   showLoading(true);
+  
   try { 
     await fetch(WEB_APP_URL, { 
       method: "POST", 
-      mode: "no-cors", // Gunakan mode no-cors jika backend tidak mendukung CORS
+      mode: "no-cors", 
       body: JSON.stringify(payload) 
     }); 
     
-    // Berikan jeda sebentar untuk proses di server
     setTimeout(() => {
       refreshData(); 
       fetchPiutangList(); 
       showLoading(false);
-      alert("Pelunasan piutang berhasil disimpan!");
+      alert("Piutang dari " + id + " telah berhasil dilunasi!");
     }, 1500);
   } 
   catch(e) { 
     showLoading(false);
-    alert("Gagal memproses piutang."); 
+    alert("Gagal memproses transaksi piutang."); 
   } 
 }
 
+// --- LOGIKA TRANSFER KAS ---
+function showTransferForm() {
+  const container = document.getElementById('action-form-container');
+  container.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-4 page-transition">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-sm">
+          <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+        </div>
+        <h3 class="text-sm font-black text-blue-800 uppercase tracking-tight">Form Transfer Kas</h3>
+      </div>
+      
+      <div class="relative flex items-center gap-3">
+        <div class="flex-1 bg-white p-3 rounded-xl border-2 border-white shadow-sm flex flex-col items-center">
+          <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">ASAL</label>
+          <span id="label_t_dari" class="font-black text-slate-700 uppercase">Cash</span>
+          <input type="hidden" id="t_dari" value="Cash">
+        </div>
+
+        <div class="flex flex-col items-center">
+          <button onclick="swapTransferAccounts()" class="bg-blue-600 p-3 rounded-full text-white shadow-lg active:scale-90 transition-all duration-300 hover:rotate-180">
+            <i data-lucide="repeat" class="w-4 h-4"></i>
+          </button>
+          <span class="text-[8px] font-bold text-blue-400 uppercase mt-1">Tukar</span>
+        </div>
+
+        <div class="flex-1 bg-white p-3 rounded-xl border-2 border-white shadow-sm flex flex-col items-center">
+          <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">TUJUAN</label>
+          <span id="label_t_ke" class="font-black text-slate-700 uppercase">Rekening</span>
+          <input type="hidden" id="t_ke" value="Rekening">
+        </div>
+      </div>
+
+      <div>
+        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nominal Transfer</label>
+        <div class="relative mt-1">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">Rp</span>
+          <input type="text" id="t_nom" placeholder="0" 
+            oninput="maskNominal(this)"
+            inputmode="numeric"
+            class="w-full p-4 pl-10 border-2 border-white rounded-xl bg-white font-black text-lg outline-none focus:border-blue-300 shadow-sm transition-all">
+        </div>
+      </div>
+
+      <button onclick="saveTransfer()" class="w-full py-4 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-100 active:scale-95 transition-transform flex items-center justify-center gap-2">
+        <i data-lucide="send" class="w-4 h-4"></i>
+        PROSES TRANSFER
+      </button>
+    </div>
+  `;
+  lucide.createIcons();
+}
+
+function swapTransferAccounts() {
+  const dariInput = document.getElementById('t_dari');
+  const keInput = document.getElementById('t_ke');
+  const dariLabel = document.getElementById('label_t_dari');
+  const keLabel = document.getElementById('label_t_ke');
+  
+  const tempVal = dariInput.value;
+  dariInput.value = keInput.value;
+  keInput.value = tempVal;
+  
+  dariLabel.innerText = dariInput.value;
+  keLabel.innerText = keInput.value;
+}
+
+async function saveTransfer() {
+  const rawNom = document.getElementById('t_nom').value;
+  const valNom = unmask(rawNom);
+  const dari = document.getElementById('t_dari').value;
+  const ke = document.getElementById('t_ke').value;
+
+  if (!valNom || valNom <= 0) {
+    alert("Masukkan nominal transfer yang valid");
+    return;
+  }
+
+  const payload = {
+    action: 'processTransaction',
+    type: 'TRANSFER',
+    dari: dari,
+    ke: ke,
+    nominal: valNom
+  };
+
+  showLoading(true);
+  try {
+    // Catatan: Google Apps Script seringkali membutuhkan mode 'no-cors' atau 
+    // penanganan respon yang tepat agar alert tidak muncul sebagai 'Unexpected Token'
+    const response = await fetch(WEB_APP_URL, { 
+      method: "POST", 
+      body: JSON.stringify(payload) 
+    });
+    
+    // Memberikan jeda agar sinkronisasi di Google Sheet selesai
+    setTimeout(() => {
+      refreshData();
+      showTransferForm(); 
+      showLoading(false);
+      alert("Transfer dari " + dari + " ke " + ke + " berhasil diproses.");
+    }, 1500);
+
+  } catch (e) {
+    showLoading(false);
+    alert("Terjadi kesalahan koneksi.");
+  }
+}
+
+// --- LOGIKA PEMBATALAN TRANSAKSI (CANCEL ORDER) ---
+async function fetchCancelList() {
+  const container = document.getElementById('action-form-container');
+  container.innerHTML = `
+    <div class="p-8 text-center">
+      <div class="w-8 h-8 border-4 border-slate-200 border-t-rose-600 rounded-full animate-spin mx-auto mb-3"></div>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Memuat Transaksi Terakhir...</p>
+    </div>`;
+
+  try {
+    // Mengambil data transaksi terbaru dari sheet Arus Kas
+    const res = await fetch(`${WEB_APP_URL}?action=getRecentTransactions&_=${Date.now()}`);
+    const data = await res.json();
+    
+    if (!data || data.length === 0) {
+      container.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs font-bold uppercase">Tidak ada transaksi ditemukan.</div>`;
+    } else {
+      container.innerHTML = `
+        <div class="flex justify-between items-center mb-3 px-1">
+          <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pilih Transaksi Untuk Dibatalkan</h3>
+        </div>
+        <div class="grid gap-2 page-transition">
+          ${data.map(t => `
+            <div onclick="confirmCancel('${t.id}', '${t.keterangan}', ${t.nominal}) position-relative" 
+                 class="group p-4 bg-white border border-slate-200 rounded-2xl flex justify-between items-center active:scale-[0.97] transition-all hover:border-rose-300 cursor-pointer">
+              <div class="flex-1 pr-3 overflow-hidden">
+                <p class="font-bold text-slate-800 text-[13px] truncate">${t.keterangan}</p>
+                <p class="text-[9px] text-slate-400 font-mono mt-0.5">${t.id} • ${t.metode}</p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="text-xs font-black ${t.kategori === 'MASUK' ? 'text-emerald-600' : 'text-rose-600'}">
+                  ${t.kategori === 'MASUK' ? '+' : '-'} ${formatRupiah(t.nominal)}
+                </p>
+                <p class="text-[8px] font-bold text-slate-300 uppercase mt-1">BATALKAN <i data-lucide="x-circle" class="w-2 h-2 inline"></i></p>
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+    }
+    lucide.createIcons();
+  } catch (e) {
+    container.innerHTML = `<div class="p-6 text-center text-rose-500 font-bold text-xs bg-rose-50 rounded-2xl">Gagal memuat data transaksi.</div>`;
+  }
+}
+
+function confirmCancel(id, ket, nom) {
+  openModal();
+  const content = document.getElementById('modalContent');
+  content.innerHTML = `
+    <div class="space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600">
+          <i data-lucide="alert-triangle"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-black text-slate-800 leading-none">Konfirmasi Batal</h2>
+          <p class="text-[10px] text-slate-400 font-medium uppercase mt-1">Tindakan ini tidak dapat dibatalkan</p>
+        </div>
+      </div>
+
+      <div class="bg-rose-50 border border-rose-100 rounded-2xl p-4">
+        <p class="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Detail Transaksi</p>
+        <p class="text-sm font-black text-slate-800 mb-1">${ket}</p>
+        <div class="flex justify-between items-center mt-2 pt-2 border-t border-rose-200/50">
+          <span class="text-[10px] font-mono text-slate-400">${id}</span>
+          <span class="text-sm font-black text-rose-600">${formatRupiah(nom)}</span>
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-50 rounded-2xl">
+        <p class="text-[11px] text-slate-500 leading-relaxed italic">
+          "Membatalkan transaksi ini akan menyesuaikan kembali saldo kas dan stok barang (jika terkait penjualan/pembelian)."
+        </p>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeModal()" class="flex-1 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl active:scale-95 transition-transform">Kembali</button>
+        <button onclick="executeCancel('${id}')" 
+                class="flex-[2] py-4 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-200 active:scale-95 transition-all">
+          Ya, Batalkan Pesanan
+        </button>
+      </div>
+    </div>
+  `;
+  lucide.createIcons();
+}
+
+async function executeCancel(id) {
+  const payload = {
+    action: 'processTransaction',
+    type: 'CANCEL_ORDER',
+    idTransaksi: id
+  };
+  
+  closeModal();
+  showLoading(true);
+  
+  try {
+    await fetch(WEB_APP_URL, { 
+      method: "POST", 
+      mode: "no-cors", 
+      body: JSON.stringify(payload) 
+    });
+    
+    // Sesuai Ledger Anda: Pesanan dibatalkan ditandai "CANCEL ORDER" agar tidak pengaruhi saldo
+    setTimeout(() => {
+      refreshData();
+      fetchCancelList();
+      showLoading(false);
+      alert("Transaksi " + id + " berhasil dibatalkan!");
+    }, 1500);
+    
+  } catch (e) {
+    showLoading(false);
+    alert("Gagal memproses pembatalan.");
+  }
+}
+    
     async function refreshData() {
       try {
         const response = await fetch(`${WEB_APP_URL}?action=getBalances&_=${Date.now()}`);
