@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -183,15 +184,14 @@
   </nav>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxr-9pvoi-2f0pIrlarOnRC3--Hp1kb63WbBBjA-vYhqubd5QYkSqwDWlqPNA6Tc-3SIA/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzq0QBSEYMrKr03dhcjPMryLbt9ecznGUWk17jWbGGFjqePYlTsCpUSKVdSQMFnnNxAAQ/exec";
 
     let allTransactions = [];
     let currentFilter = 'today';
     let currentView = 'Semua';
     let currentCategory = 'SEMUA';
     let productMaster = [];
-let currentTransactions = []; // Tambahkan ini di bagian atas script jika belum ada
-let adaTransaksiBaru = false;   // Untuk logika klik riwayat yang Anda minta sebelumnya
+
     // Inisialisasi
     window.onload = () => {
       changeTab('penjualan');
@@ -411,49 +411,14 @@ let adaTransaksiBaru = false;   // Untuk logika klik riwayat yang Anda minta seb
       lucide.createIcons();
     }
 
-   async function refreshData(isFullRefresh = false) {
-  const loadingElement = document.getElementById('loadingSpinner');
-  if (loadingElement) loadingElement.classList.remove('hidden');
-
-  try {
-    // 1. Ambil Saldo (Selalu ambil saldo terbaru dengan cache busting)
-    const resBal = await fetch(`${WEB_APP_URL}?action=getBalances&_=${Date.now()}`);
-    const balances = await resBal.json();
-    
-    // Pastikan ID elemen ini sesuai dengan HTML Anda (cashBal & bankBal)
-    if(document.getElementById('cashBal')) 
-       document.getElementById('cashBal').innerText = formatRupiah(balances.cash);
-    if(document.getElementById('bankBal'))
-       document.getElementById('bankBal').innerText = formatRupiah(balances.bank);
-
-    // 2. Ambil Transaksi secara Pintar (Incremental)
-    // Ambil ID terbaru dari indeks 0 karena data terbaru biasanya di atas
-    let lastId = (currentTransactions.length > 0 && !isFullRefresh) ? currentTransactions[0].id : "";
-    
-    const resTrans = await fetch(`${WEB_APP_URL}?action=getTransactions&lastId=${lastId}`);
-    const newData = await resTrans.json();
-    
-    if (newData && newData.length > 0) {
-      if (isFullRefresh || currentTransactions.length === 0) {
-        currentTransactions = newData;
-      } else {
-        // Gabungkan: data baru (newData) ditaruh di depan data lama (currentTransactions)
-        currentTransactions = [...newData, ...currentTransactions];
-      }
-      renderTransactions(); // Jalankan fungsi untuk menggambar tabel
+    async function refreshData() {
+      showLoading(true);
+      try {
+        const res = await fetch(`${WEB_APP_URL}?action=getBalances&_=${Date.now()}`);
+        const data = await res.json();
+        document.getElementById('total-balance').innerText = formatRupiah(data.cash + data.bank);
+      } catch (e) {} finally { showLoading(false); }
     }
-    
-    adaTransaksiBaru = false; // Reset penanda transaksi
-    console.log(`Sinkronisasi berhasil. ${newData.length} data baru.`);
-    
-  } catch (err) {
-    console.error("Gagal refresh data:", err);
-  } finally {
-    if (loadingElement) loadingElement.classList.add('hidden');
-    // Fungsi pembantu untuk menyembunyikan loading di list riwayat
-    if (typeof hideListLoading === "function") hideListLoading(); 
-  }
-}
 
     function downloadExcel() { alert("Fitur Excel akan segera hadir."); }
 
@@ -478,319 +443,183 @@ let adaTransaksiBaru = false;   // Untuk logika klik riwayat yang Anda minta seb
     }
 
    function changeTab(tab) {
-  currentTab = tab;
+  activeTab = tab;
   const menuContainer = document.getElementById('menu-container');
-
-  // 1. Update UI Navigasi (Highlight Icon)
-  document.querySelectorAll('nav button').forEach(btn => {
-    btn.classList.remove('nav-active');
-  });
+  
+  // Update UI Navigasi
+  document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('nav-active'));
   const activeBtn = document.getElementById('nav-' + tab);
   if (activeBtn) activeBtn.classList.add('nav-active');
 
-  // 2. Manajemen Kontainer (Persistent DOM)
-  // Ambil referensi ke wrapper riwayat dan kontainer form
-  const riwayatWrapper = document.getElementById('riwayat-wrapper');
-  let formContainer = document.getElementById('form-container');
-
-  // Buat form-container jika belum ada di dalam menu-container
-  if (!formContainer) {
-    formContainer = document.createElement('div');
-    formContainer.id = 'form-container';
-    menuContainer.appendChild(formContainer);
-  }
-
-  // 3. Logika Tampilan & Render
   if (tab === 'riwayat') {
-    // Sembunyikan form, tampilkan riwayat (agar filter tidak reset)
-    formContainer.style.display = 'none';
     renderRiwayatPage();
   } 
-  else {
-    // Sembunyikan riwayat, tampilkan form
-    if (riwayatWrapper) riwayatWrapper.style.display = 'none';
-    formContainer.style.display = 'block';
-
-    // Jalankan fungsi render sesuai tab yang dipilih
-    if (tab === 'penjualan') {
-      renderPenjualanPage();
-    } 
-    else if (tab === 'pembelian') {
-      renderPembelianPage();
-    } 
-    else if (tab === 'operasional') {
-      renderOperasionalPage();
-    } 
-    else if (tab === 'lainnya') {
-      renderLainnyaPage();
-    } 
-    else {
-      formContainer.innerHTML = `
-        <div class="p-10 text-center text-slate-400 font-bold uppercase text-[10px] tracking-widest">
-          Halaman sedang disiapkan.
+  else if (tab === 'penjualan') {
+    menuContainer.innerHTML = `
+      <div class="space-y-4 page-transition">
+        <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="shopping-cart" class="w-5 text-blue-600"></i> Penjualan Baru</h2>
+        <div class="grid grid-cols-1 gap-2">
+                    <input id="p_cust" type="text" placeholder="NAMA PELANGGAN" 
+                 oninput="this.value = this.value.toUpperCase()"
+                 class="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium">
         </div>
-      `;
-    }
-  }
-
-  // 4. Inisialisasi ulang icon Lucide untuk elemen baru
-  lucide.createIcons();
-}
-
-function renderPenjualanPage() {
-  const container = document.getElementById('menu-container');
-  
-  // Ambil atau buat form-container agar terpisah dari riwayat-wrapper
-  let formContainer = document.getElementById('form-container');
-  if (!formContainer) {
-    formContainer = document.createElement('div');
-    formContainer.id = 'form-container';
-    container.appendChild(formContainer);
-  }
-
-  // Tampilkan form-container
-  formContainer.style.display = 'block';
-
-  // Render HTML Penjualan
-  formContainer.innerHTML = `
-    <div class="space-y-4 page-transition">
-      <h2 class="text-xl font-bold flex items-center gap-2">
-        <i data-lucide="shopping-cart" class="w-5 text-blue-600"></i> Penjualan Baru
-      </h2>
-      
-      <div class="grid grid-cols-1 gap-2">
-        <input id="p_cust" type="text" placeholder="NAMA PELANGGAN" 
-               oninput="this.value = this.value.toUpperCase()"
-               class="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium">
-      </div>
-
-      <div class="bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-300">
-        <p class="text-[10px] font-bold mb-3 text-slate-500 uppercase tracking-widest">Keranjang Barang</p>
-        <div id="itemContainer" class="space-y-0"></div>
-        <button onclick="addItem(true)" class="w-full mt-2 p-3 bg-white border border-blue-100 text-blue-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform">
-          <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH BARANG
-        </button>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="text-[10px] font-bold text-gray-400 uppercase">Diskon (Rp)</label>
-          <input id="p_disc" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" class="w-full p-3 bg-slate-50 border-none rounded-xl accounting outline-none focus:ring-2 focus:ring-blue-500 font-bold">
-        </div>
-        <div>
-          <label class="text-[10px] font-bold text-gray-400 uppercase">Metode</label>
-          <select id="p_metode" class="w-full p-3 bg-slate-50 border-none rounded-xl bg-white font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none">
-            <option value="Cash">Cash</option>
-            <option value="Rekening">Rekening</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-        <div class="flex justify-between items-center mb-1">
-          <span class="text-xs font-medium text-blue-800">Total Tagihan:</span>
-          <span id="p_total_raw" class="text-xs font-bold text-blue-800 tracking-wider">Rp 0</span>
-        </div>
-        <div class="flex justify-between items-center text-blue-900 border-t border-blue-200 mt-2 pt-2">
-          <span class="text-sm font-bold">Total Akhir:</span>
-          <span id="p_final" class="text-lg font-black tracking-tight">Rp 0</span>
-        </div>
-      </div>
-
-      <div class="pt-1">
-        <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">DP / Pembayaran Sekarang</label>
-        <input id="p_dp" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="Masukkan nominal" class="w-full p-4 bg-green-50 border-2 border-green-200 rounded-2xl text-xl font-extrabold text-green-700 focus:ring-4 focus:ring-green-100 outline-none accounting">
-        <p id="p_status_piutang" class="text-[10px] mt-1 text-slate-500 italic"></p>
-      </div>
-
-      <button onclick="savePenjualan()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-extrabold shadow-lg shadow-blue-100 active:scale-95 transition-transform flex items-center justify-center gap-2">
-        <i data-lucide="check-circle" class="w-5"></i> PROSES TRANSAKSI
-      </button>
-    </div>
-  `;
-
-  lucide.createIcons();
-  addItem(false); // Baris barang pertama
-}
-
-function renderPembelianPage() {
-  const container = document.getElementById('menu-container');
-  
-  // Gunakan form-container agar tidak menimpa riwayat-wrapper
-  let formContainer = document.getElementById('form-container');
-  if (!formContainer) {
-    formContainer = document.createElement('div');
-    formContainer.id = 'form-container';
-    container.appendChild(formContainer);
-  }
-
-  // Tampilkan form-container dan pastikan riwayat disembunyikan
-  formContainer.style.display = 'block';
-  const riwayatWrapper = document.getElementById('riwayat-wrapper');
-  if (riwayatWrapper) riwayatWrapper.style.display = 'none';
-
-  formContainer.innerHTML = `
-    <div class="space-y-4 page-transition">
-      <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-        <i data-lucide="truck" class="text-red-600"></i> Pembelian Barang
-      </h2>
-      
-      <div class="space-y-4">
-        <input id="b_supp" type="text" placeholder="NAMA SUPPLIER" 
-               oninput="this.value = this.value.toUpperCase()"
-               class="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-medium">
-        
         <div class="bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-300">
-          <p class="text-[10px] font-bold mb-3 text-slate-500 uppercase tracking-widest">Daftar Belanja</p>
+          <p class="text-[10px] font-bold mb-3 text-slate-500 uppercase tracking-widest">Keranjang Barang</p>
           <div id="itemContainer" class="space-y-0"></div>
-          <button onclick="addItem(true)" class="w-full mt-2 p-3 bg-white border border-red-100 text-red-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform">
+          <button onclick="addItem(true)" class="w-full mt-2 p-3 bg-white border border-blue-100 text-blue-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform">
             <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH BARANG
           </button>
         </div>
-
-        <select id="b_metode" class="w-full p-3 bg-slate-50 border-none rounded-xl bg-white font-bold text-slate-700 focus:ring-2 focus:ring-red-500 outline-none appearance-none">
-          <option value="Cash">Cash</option>
-          <option value="Rekening">Rekening</option>
-        </select>
-
-        <div>
-          <label class="block text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 tracking-wider">Bayar Sekarang (DP)</label>
-          <input id="b_dp" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" class="w-full p-4 bg-red-50 border-2 border-red-100 rounded-2xl text-xl font-extrabold text-red-600 focus:ring-4 focus:ring-red-100 outline-none accounting">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-gray-400 uppercase">Diskon (Rp)</label>
+            <input id="p_disc" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" class="w-full p-3 bg-slate-50 border-none rounded-xl accounting outline-none focus:ring-2 focus:ring-blue-500 font-bold">
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-gray-400 uppercase">Metode</label>
+            <select id="p_metode" class="w-full p-3 bg-slate-50 border-none rounded-xl bg-white font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none">
+              <option value="Cash">Cash</option>
+              <option value="Rekening">Rekening</option>
+            </select>
+          </div>
         </div>
-
-        <div class="bg-red-50 p-4 rounded-2xl border border-red-100 flex justify-between items-center">
-          <span class="font-bold text-red-800">Total Belanja:</span>
-          <span id="b_final" class="text-xl font-black text-red-700 tracking-tight">Rp 0</span>
+        <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-medium text-blue-800">Total Tagihan:</span>
+            <span id="p_total_raw" class="text-xs font-bold text-blue-800 tracking-wider">Rp 0</span>
+          </div>
+          <div class="flex justify-between items-center text-blue-900 border-t border-blue-200 mt-2 pt-2">
+            <span class="text-sm font-bold">Total Akhir:</span>
+            <span id="p_final" class="text-lg font-black tracking-tight">Rp 0</span>
+          </div>
         </div>
-
-        <button onclick="savePembelian()" class="w-full bg-red-600 text-white p-4 rounded-2xl font-extrabold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
-           <i data-lucide="save" class="w-5"></i> SIMPAN PEMBELIAN
+        <div class="pt-1">
+          <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">DP / Pembayaran Sekarang</label>
+          <input id="p_dp" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="Masukkan nominal" class="w-full p-4 bg-green-50 border-2 border-green-200 rounded-2xl text-xl font-extrabold text-green-700 focus:ring-4 focus:ring-green-100 outline-none accounting">
+          <p id="p_status_piutang" class="text-[10px] mt-1 text-slate-500 italic"></p>
+        </div>
+        <button onclick="savePenjualan()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-extrabold shadow-lg shadow-blue-100 active:scale-95 transition-transform flex items-center justify-center gap-2">
+           <i data-lucide="check-circle" class="w-5"></i> PROSES TRANSAKSI
         </button>
       </div>
-    </div>
-  `;
+    `;
+    addItem(false); // Tambah baris pertama tanpa buka modal otomatis
+  } 
+  else if (tab === 'pembelian') {
+    menuContainer.innerHTML = `
+      <div class="space-y-4 page-transition">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="truck" class="text-red-600"></i> Pembelian Barang</h2>
+        <div class="space-y-4">
+          <input id="b_supp" type="text" placeholder="NAMA SUPPLIER" 
+                 oninput="this.value = this.value.toUpperCase()"
+                 class="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-medium">
+          
+          <div class="bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-300">
+            <p class="text-[10px] font-bold mb-3 text-slate-500 uppercase tracking-widest">Daftar Belanja</p>
+            <div id="itemContainer" class="space-y-0"></div>
+            <button onclick="addItem(true)" class="w-full mt-2 p-3 bg-white border border-red-100 text-red-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH BARANG
+            </button>
+          </div>
 
-  lucide.createIcons();
-  addItem(false); // Inisialisasi baris input barang pertama
-}
+          <select id="b_metode" class="w-full p-3 bg-slate-50 border-none rounded-xl bg-white font-bold text-slate-700 focus:ring-2 focus:ring-red-500 outline-none appearance-none">
+            <option value="Cash">Cash</option>
+            <option value="Rekening">Rekening</option>
+          </select>
 
-function renderOperasionalPage() {
-  const container = document.getElementById('menu-container');
-  
-  // Ambil atau buat form-container agar terpisah dari riwayat-wrapper
-  let formContainer = document.getElementById('form-container');
-  if (!formContainer) {
-    formContainer = document.createElement('div');
-    formContainer.id = 'form-container';
-    container.appendChild(formContainer);
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 tracking-wider">Bayar Sekarang (DP)</label>
+            <input id="b_dp" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" class="w-full p-4 bg-red-50 border-2 border-red-100 rounded-2xl text-xl font-extrabold text-red-600 focus:ring-4 focus:ring-red-100 outline-none accounting">
+          </div>
+
+          <div class="bg-red-50 p-4 rounded-2xl border border-red-100 flex justify-between items-center">
+            <span class="font-bold text-red-800">Total Belanja:</span>
+            <span id="b_final" class="text-xl font-black text-red-700 tracking-tight">Rp 0</span>
+          </div>
+
+          <button onclick="savePembelian()" class="w-full bg-red-600 text-white p-4 rounded-2xl font-extrabold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+             <i data-lucide="save" class="w-5"></i> SIMPAN PEMBELIAN
+          </button>
+        </div>
+      </div>
+    `;
+    addItem(false);
   }
+  else if (tab === 'operasional') {
+    menuContainer.innerHTML = `
+      <div class="space-y-4 page-transition">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="calculator" class="text-orange-600"></i> Pengeluaran Biaya</h2>
+        <div class="space-y-4">
+          <select id="op_metode" class="w-full p-3 bg-slate-50 border-none rounded-xl bg-white font-bold text-slate-700 focus:ring-2 focus:ring-orange-500 outline-none appearance-none">
+            <option value="Cash">Metode: Cash</option>
+            <option value="Rekening">Metode: Rekening</option>
+          </select>
+          
+          <div class="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl">
+            <input type="checkbox" id="is_refund" class="w-6 h-6 accent-red-600 cursor-pointer">
+            <label for="is_refund" class="text-xs font-bold text-red-700 cursor-pointer">Ini adalah Dana Refund (Pengembalian)</label>
+          </div>
 
-  // Tampilkan form-container dan sembunyikan riwayat
-  formContainer.style.display = 'block';
-  const riwayatWrapper = document.getElementById('riwayat-wrapper');
-  if (riwayatWrapper) riwayatWrapper.style.display = 'none';
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 tracking-wider">Nominal Pengeluaran</label>
+            <input id="op_nom" type="text" inputmode="numeric" oninput="maskNominal(this)" placeholder="0" 
+                   class="w-full p-4 bg-slate-50 border-none rounded-2xl text-xl font-extrabold text-slate-800 focus:ring-4 focus:ring-slate-100 outline-none accounting">
+          </div>
 
-  formContainer.innerHTML = `
-    <div class="space-y-4 page-transition">
-      <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-        <i data-lucide="calculator" class="text-orange-600"></i> Pengeluaran Biaya
-      </h2>
-      
-      <div class="space-y-4">
-        <select id="op_metode" class="w-full p-3 bg-slate-50 border-none rounded-xl bg-white font-bold text-slate-700 focus:ring-2 focus:ring-orange-500 outline-none appearance-none">
-          <option value="Cash">Metode: Cash</option>
-          <option value="Rekening">Metode: Rekening</option>
-        </select>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 tracking-wider">Keterangan</label>
+            <textarea id="op_ket" placeholder="Tulis rincian pengeluaran..." 
+                      class="w-full p-4 bg-slate-50 border-none rounded-2xl h-32 focus:ring-4 focus:ring-slate-100 outline-none font-medium"></textarea>
+          </div>
+
+          <button onclick="saveOperasional()" class="w-full bg-slate-800 text-white p-4 rounded-2xl font-extrabold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+             <i data-lucide="send" class="w-5"></i> SIMPAN PENGELUARAN
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  else if (tab === 'lainnya') {
+    menuContainer.innerHTML = `
+      <div class="space-y-6 page-transition">
+        <h2 class="text-lg font-bold flex items-center gap-2 text-slate-700">
+          <i data-lucide="grid" class="w-5"></i> Administrasi & Keuangan
+        </h2>
         
-        <div class="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl">
-          <input type="checkbox" id="is_refund" class="w-6 h-6 accent-red-600 cursor-pointer">
-          <label for="is_refund" class="text-xs font-bold text-red-700 cursor-pointer">Ini adalah Dana Refund (Pengembalian)</label>
-        </div>
+        <div class="grid grid-cols-4 gap-2">
+          <button onclick="showMenuAction('UTANG', this)" class="action-btn flex flex-col items-center p-3 bg-amber-50 border border-amber-100 rounded-2xl active:scale-95 transition-all gap-1">
+            <div class="icon-box p-2 bg-amber-100 rounded-xl text-amber-600 transition-transform"><i data-lucide="book-open" class="w-4 h-4"></i></div>
+            <span class="text-[9px] font-black text-amber-800 uppercase tracking-tighter text-center">Utang</span>
+          </button>
 
-        <div>
-          <label class="block text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 tracking-wider">Nominal Pengeluaran</label>
-          <input id="op_nom" type="text" inputmode="numeric" oninput="maskNominal(this)" placeholder="0" 
-                 class="w-full p-4 bg-slate-50 border-none rounded-2xl text-xl font-extrabold text-slate-800 focus:ring-4 focus:ring-slate-100 outline-none accounting">
-        </div>
+          <button onclick="showMenuAction('PIUTANG', this)" class="action-btn flex flex-col items-center p-3 bg-emerald-50 border border-emerald-100 rounded-2xl active:scale-95 transition-all gap-1">
+            <div class="icon-box p-2 bg-emerald-100 rounded-xl text-emerald-600 transition-transform"><i data-lucide="wallet" class="w-4 h-4"></i></div>
+            <span class="text-[9px] font-black text-emerald-800 uppercase tracking-tighter text-center">Piutang</span>
+          </button>
 
-        <div>
-          <label class="block text-[10px] font-bold text-slate-400 uppercase ml-1 mb-1 tracking-wider">Keterangan</label>
-          <textarea id="op_ket" placeholder="Tulis rincian pengeluaran..." 
-                    class="w-full p-4 bg-slate-50 border-none rounded-2xl h-32 focus:ring-4 focus:ring-slate-100 outline-none font-medium"></textarea>
-        </div>
+          <button onclick="showMenuAction('TRANSFER', this)" class="action-btn flex flex-col items-center p-3 bg-blue-50 border border-blue-100 rounded-2xl active:scale-95 transition-all gap-1">
+            <div class="icon-box p-2 bg-blue-100 rounded-xl text-blue-600 transition-transform"><i data-lucide="arrow-left-right" class="w-4 h-4"></i></div>
+            <span class="text-[9px] font-black text-blue-800 uppercase tracking-tighter text-center">Transfer</span>
+          </button>
 
-        <button onclick="saveOperasional()" class="w-full bg-slate-800 text-white p-4 rounded-2xl font-extrabold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
-           <i data-lucide="send" class="w-5"></i> SIMPAN PENGELUARAN
-        </button>
+          <button onclick="showMenuAction('CANCEL', this)" class="action-btn flex flex-col items-center p-3 bg-rose-50 border border-rose-100 rounded-2xl active:scale-95 transition-all gap-1">
+            <div class="icon-box p-2 bg-rose-100 rounded-xl text-rose-600 transition-transform"><i data-lucide="x-circle" class="w-4 h-4"></i></div>
+            <span class="text-[9px] font-black text-rose-800 uppercase tracking-tighter text-center">Batal</span>
+          </button>
+        </div>
+        <div id="action-form-container" class="mt-4 hidden p-5 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in slide-in-from-top-2 duration-300"></div>
+
+        <div class="pt-4 border-t border-slate-100">
+           <button onclick="location.reload()" class="w-full p-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+             <i data-lucide="refresh-cw" class="w-4 h-4"></i> Muat Ulang Aplikasi
+           </button>
+        </div>
       </div>
-    </div>
-  `;
-
-  lucide.createIcons();
-}
-
-function renderLainnyaPage() {
-  const container = document.getElementById('menu-container');
-  
-  // Gunakan form-container agar terpisah dari riwayat-wrapper
-  let formContainer = document.getElementById('form-container');
-  if (!formContainer) {
-    formContainer = document.createElement('div');
-    formContainer.id = 'form-container';
-    container.appendChild(formContainer);
+    `;
   }
-
-  // Tampilkan form-container dan sembunyikan riwayat
-  formContainer.style.display = 'block';
-  const riwayatWrapper = document.getElementById('riwayat-wrapper');
-  if (riwayatWrapper) riwayatWrapper.style.display = 'none';
-
-  formContainer.innerHTML = `
-    <div class="space-y-6 page-transition">
-      <h2 class="text-lg font-bold flex items-center gap-2 text-slate-700">
-        <i data-lucide="grid" class="w-5"></i> Administrasi & Keuangan
-      </h2>
-      
-      <div class="grid grid-cols-4 gap-2">
-        <button onclick="showMenuAction('UTANG', this)" class="action-btn flex flex-col items-center p-3 bg-amber-50 border border-amber-100 rounded-2xl active:scale-95 transition-all gap-1">
-          <div class="icon-box p-2 bg-amber-100 rounded-xl text-amber-600 transition-transform">
-            <i data-lucide="book-open" class="w-4 h-4"></i>
-          </div>
-          <span class="text-[9px] font-black text-amber-800 uppercase tracking-tighter text-center">Utang</span>
-        </button>
-
-        <button onclick="showMenuAction('PIUTANG', this)" class="action-btn flex flex-col items-center p-3 bg-emerald-50 border border-emerald-100 rounded-2xl active:scale-95 transition-all gap-1">
-          <div class="icon-box p-2 bg-emerald-100 rounded-xl text-emerald-600 transition-transform">
-            <i data-lucide="wallet" class="w-4 h-4"></i>
-          </div>
-          <span class="text-[9px] font-black text-emerald-800 uppercase tracking-tighter text-center">Piutang</span>
-        </button>
-
-        <button onclick="showMenuAction('TRANSFER', this)" class="action-btn flex flex-col items-center p-3 bg-blue-50 border border-blue-100 rounded-2xl active:scale-95 transition-all gap-1">
-          <div class="icon-box p-2 bg-blue-100 rounded-xl text-blue-600 transition-transform">
-            <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
-          </div>
-          <span class="text-[9px] font-black text-blue-800 uppercase tracking-tighter text-center">Transfer</span>
-        </button>
-
-        <button onclick="showMenuAction('CANCEL', this)" class="action-btn flex flex-col items-center p-3 bg-rose-50 border border-rose-100 rounded-2xl active:scale-95 transition-all gap-1">
-          <div class="icon-box p-2 bg-rose-100 rounded-xl text-rose-600 transition-transform">
-            <i data-lucide="x-circle" class="w-4 h-4"></i>
-          </div>
-          <span class="text-[9px] font-black text-rose-800 uppercase tracking-tighter text-center">Batal</span>
-        </button>
-      </div>
-
-      <div id="action-form-container" class="mt-4 hidden p-5 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in slide-in-from-top-2 duration-300"></div>
-
-      <div class="pt-4 border-t border-slate-100">
-         <button onclick="location.reload()" class="w-full p-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
-           <i data-lucide="refresh-cw" class="w-4 h-4"></i> Muat Ulang Aplikasi
-         </button>
-      </div>
-    </div>
-  `;
-
+  else {
+    menuContainer.innerHTML = `<div class="p-10 text-center text-slate-400 font-bold uppercase text-xs tracking-widest">Halaman sedang disiapkan.</div>`;
+  }
   lucide.createIcons();
 }
 
@@ -990,7 +819,7 @@ function addItem(autoOpen = true) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-adaTransaksiBaru = true;
+
         setTimeout(() => {
           refreshData(); 
           fetchMasterStock();
@@ -1020,8 +849,6 @@ adaTransaksiBaru = true;
       };
       payload.total = items.reduce((a, b) => a + (b.qty * b.harga), 0);
       runScript('processTransaction', payload, 'penjualan');
-
-      
     }
 
     function savePembelian() {
@@ -1271,7 +1098,7 @@ async function eksekusiPelunasanUtang(id, nominal) {
       mode: "no-cors", 
       body: JSON.stringify(payload) 
     });
-    adaTransaksiBaru = true;
+    
     setTimeout(() => {
       refreshData();
       if (typeof fetchUtangList === 'function') fetchUtangList(); // Refresh daftar utang
@@ -1447,7 +1274,7 @@ async function saveBayarPiutang(id, sisa) {
       mode: "no-cors", 
       body: JSON.stringify(payload) 
     }); 
-    adaTransaksiBaru = true;
+    
     setTimeout(() => {
       refreshData(); 
       fetchPiutangList(); 
@@ -1555,7 +1382,7 @@ async function saveTransfer() {
       method: "POST", 
       body: JSON.stringify(payload) 
     });
-    adaTransaksiBaru = true;
+    
     // Memberikan jeda agar sinkronisasi di Google Sheet selesai
     setTimeout(() => {
       refreshData();
@@ -1672,7 +1499,7 @@ async function executeCancel(id) {
       mode: "no-cors", 
       body: JSON.stringify(payload) 
     });
-    adaTransaksiBaru = true;
+    
     // Sesuai Ledger Anda: Pesanan dibatalkan ditandai "CANCEL ORDER" agar tidak pengaruhi saldo
     setTimeout(() => {
       refreshData();
@@ -1686,16 +1513,23 @@ async function executeCancel(id) {
     alert("Gagal memproses pembatalan.");
   }
 }
-   
+    
+    async function refreshData() {
+      try {
+        const response = await fetch(`${WEB_APP_URL}?action=getBalances&_=${Date.now()}`);
+        const data = await response.json();
+        if (data) {
+          const total = (data.cash || 0) + (data.bank || 0);
+          document.getElementById('total-balance').innerText = "Rp " + total.toLocaleString('id-ID');
+        }
+      } catch (e) { console.error(e); }
+    }
+
     window.onload = () => {
       refreshData();
       fetchMasterStock();
       changeTab('penjualan');
     };
-
-    setInterval(() => {
-  refreshData(); 
-}, 120000);
   </script>
 </body>
 </html>
