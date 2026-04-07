@@ -7,6 +7,7 @@
   <title>Kasir & Arus Kas Modern</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body { 
@@ -113,10 +114,65 @@
   from { transform: translateY(-100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+       /* CSS UNTUK CETAK (PRINT) */
+.animate-spin {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  
+ 
+@media print {
+  @page {
+    /* Menjaga printer thermal memotong kertas secara otomatis sesuai panjang isi */
+    size: auto;
+    margin: 0;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white;
+    /* Memastikan body bertindak sebagai flex container untuk memposisikan nota di tengah */
+    display: flex !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+  }
+
+  body > *:not(#printArea) {
+    display: none !important;
+  }
+
+  #printArea {
+
+display: block !important;
+  width: 380px !important; 
+  height: auto !important; 
+  background: white;
+  margin: 0 auto !important;
+  padding: 0 !important; /* Ubah padding jadi 0 di sini, kita atur di dalam HTML nota saja */
+  line-height: 1.2;
+  overflow: visible !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+}
+
+/* Tambahan agar saat muncul di layar (sebelum di-share), posisinya juga di tengah */
+
+#printArea {
+  position: absolute;
+  left: -9999px; /* Membuang elemen ke luar layar agar tidak merusak tampilan UI */
+  top: 0;
+  background: white;
+  width: 380px;
+  z-index: -1; /
+}
+
   </style>
 </head>
 <body class="pb-safe">
-
+<div id="printArea" class="hidden"></div>
   <div id="loading-overlay">
     <div class="spinner mb-2"></div>
     <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Memproses...</p>
@@ -647,7 +703,7 @@ content.style.opacity = "0";
          Tutup
        </button>
        ${t.kat && t.kat.toUpperCase() === 'PENJUALAN' ? `
-          <button onclick="shareNotaJPG('${t.id}')" class="py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2">
+         <button onclick="shareNotaJPG('${t.id}', event)" class="py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2">
             <i data-lucide="share-2" class="w-4 h-4"></i> Bagikan Nota (JPG)
           </button>
         ` : ''}
@@ -1785,6 +1841,218 @@ isFullDataLoaded = false;
       } catch (e) { console.error(e); }
     }
 
+async function shareNotaJPG(id, event) {
+ // 1. Pastikan mencari di variabel yang benar (allTransactions atau currentTransactions)
+  const t = (typeof allTransactions !== 'undefined' ? allTransactions : currentTransactions).find(item => item.id === id);
+  if (!t) return alert("Data transaksi tidak ditemukan!");
+
+  // 2. Ambil referensi tombol secara aman
+  const btn = event ? event.currentTarget : null;
+  const originalText = btn ? btn.innerHTML : '';
+  
+  if (btn) {
+    btn.innerHTML = '<div class="loader w-4 h-4 border-2 border-white mr-2 inline-block animate-spin"></div> Memproses...';
+    btn.disabled = true;
+  }
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = generateNotaHTML(t);
+  printArea.classList.remove('hidden');
+
+  try {
+    // Beri waktu browser merender font & layout
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    const canvas = await html2canvas(printArea, {
+      scale: 3, // Skala 3 agar gambar sangat tajam saat di-zoom di WA
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      width: 380,
+      windowWidth: 380,
+      logging: false
+    });
+
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    const blob = await (await fetch(dataUrl)).blob();
+    
+    // Memberikan nama file yang unik agar tidak tertukar di cache HP
+    const fileName = `Nota_${t.id}_${Date.now()}.jpg`;
+    const file = new File([blob], fileName, { type: "image/jpeg" });
+
+    // Cek apakah browser mendukung sharing file
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: 'Nota Muflih Print',
+        text: `Nota transaksi #${t.id} - Muflih Print`
+      });
+    } else {
+      // Fallback: Jika tidak bisa share, maka download otomatis
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = dataUrl;
+      link.click();
+      alert("Browser Anda tidak mendukung share langsung. File telah diunduh.");
+    }
+  } catch (err) {
+    console.error("Gagal share:", err);
+    alert("Maaf, terjadi kesalahan saat memproses gambar.");
+  } finally {
+    // Kembalikan tombol ke semula
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    printArea.classList.add('hidden');
+  }
+}
+
+
+  /** * FUNGSI CETAK NOTA 
+ * Menggabungkan desain UI modern dengan logika data transaksi
+ **/
+function generateNotaHTML(t) {
+  let subtotal = 0;
+  const diskon = Number(t.diskon) || 0;
+  let rowsHtml = '';
+
+  if (t.detail && t.detail.length > 0) {
+    rowsHtml = t.detail.map(d => {
+      const qty = Number(d.qty) || 0;
+      const harga = Number(d.harga) || 0;
+      const rowTotal = qty * harga;
+      subtotal += rowTotal;
+      return `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 12px;">
+          <div style="flex: 1; padding-right: 10px;">
+            <div style="font-weight: 700; color: #334155; margin-bottom: 2px;">${d.nama}</div>
+            <div style="font-size: 10px; color: #94a3b8;">${qty} x ${formatRupiah(harga)}</div>
+          </div>
+          <div style="font-weight: 700; color: #334155; text-align: right;">${formatRupiah(rowTotal)}</div>
+        </div>`;
+    }).join('');
+  } else {
+    // Gunakan nilai masuk atau keluar mana yang ada angkanya
+    const val = Number(t.masuk) > 0 ? Number(t.masuk) : (Number(t.keluar) || 0);
+    subtotal = val + diskon;
+    rowsHtml = `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 12px;">
+        <div style="flex: 1;">
+          <div style="font-weight: 700; color: #334155;">${t.ket || 'Transaksi Umum'}</div>
+        </div>
+        <div style="font-weight: 700; color: #334155; text-align: right;">${formatRupiah(subtotal)}</div>
+      </div>`;
+  }
+
+  const totalBill = subtotal - diskon;
+  const paid = Number(t.masuk) > 0 ? Number(t.masuk) : (Number(t.keluar) || 0);
+  const sisa = totalBill - paid;
+  const isPiutang = sisa > 0.5; // Gunakan 0.5 untuk menghindari error pembulatan desimal
+
+  return `
+  <div id="nota-container" style="width: 380px; margin: 0; padding: 25px; font-family: 'Inter', sans-serif; background-color: #ffffff; box-sizing: border-box; position: relative; border: 1px solid #f1f5f9; display: block;">
+    <div style="text-align: center; margin-bottom: 25px;">
+      <div style="font-size: 22px; font-weight: 900; color: #2563eb; font-style: italic; letter-spacing: -1px;">Muflih Print</div>
+      <div style="font-size: 10px; color: #94a3b8; line-height: 1.4; margin-top: 4px;">
+        Card Invitation Printing & Design<br>
+        Jl. Barawaja No. 19, Makassar
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 20px;">
+      <div style="text-align: left;">
+        <div style="font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase;">Nomor Nota</div>
+        <div style="font-size: 12px; font-weight: 800; color: #334155; text-transform: uppercase;">#${t.id}</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase;">Tanggal</div>
+        <div style="font-size: 12px; font-weight: 800; color: #334155;">${t.waktu}</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <div style="font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; margin-bottom: 4px;">Kepada Yth:</div>
+      <div style="font-size: 14px; font-weight: 700; color: #1e293b; border-bottom: 1px solid #f8fafc; padding-bottom: 4px;">
+        ${t.sub && t.sub !== '-' ? t.sub : 'Pelanggan Umum'}
+      </div>
+    </div>
+
+    <div style="margin-bottom: 30px;">
+      <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; margin-bottom: 10px;">
+        <span>Deskripsi</span>
+        <span>Total</span>
+      </div>
+      ${rowsHtml}
+    </div>
+
+    <div style="border-top: 2px solid #f1f5f9; padding-top: 15px;">
+      <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: #64748b;">
+        <span>Subtotal</span>
+        <span style="font-weight: 700; color: #334155;">${formatRupiah(subtotal)}</span>
+      </div>
+      
+      ${diskon > 0 ? `
+      <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: #ef4444;">
+        <span>Diskon</span>
+        <span style="font-weight: 700;">- ${formatRupiah(diskon)}</span>
+      </div>` : ''}
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0;">
+        <span style="font-size: 11px; font-weight: 800; color: #1e293b; text-transform: uppercase;">Total Akhir</span>
+        <span style="font-size: 20px; font-weight: 900; color: #2563eb; letter-spacing: -0.5px;">${formatRupiah(totalBill)}</span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 12px; color: #64748b;">
+        <span style="font-style: italic;">Dibayar (${t.metode || '-'})</span>
+        <span style="font-weight: 700; color: #10b981;">${formatRupiah(paid)}</span>
+      </div>
+
+     ${isPiutang ? `
+<div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; padding: 8px 12px; border-radius: 8px; margin-top: 20px; border: 1px solid #fee2e2;">
+  
+  <span style="font-size: 9px; font-weight: 800; color: #991b1b; text-transform: uppercase; 
+               position: relative; top: -6px;"> 
+    Sisa Piutang
+  </span>
+
+  <span style="font-size: 14px; font-weight: 900; color: #ef4444; 
+               position: relative; 
+               top: -7px;"> ${formatRupiah(sisa)}
+  </span>
+
+</div>` : ''}
+
+    </div>
+
+    <div style="margin-top: 30px; text-align: center;">
+  <div style="display: inline-flex; align-items: center; justify-content: center; height: 28px; min-width: 100px; padding: 0 16px; border-radius: 20px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; line-height: 1;
+    /* Tambahkan baris di bawah ini untuk menaikkan teks 2 pixel */
+    padding-bottom: 13px; 
+    ${isPiutang ? 'background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5;' : 'background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7;'}">
+    ${isPiutang ? 'Belum Lunas' : 'Lunas'}
+  </div>
+  <p style="font-size: 10px; color: #cbd5e1; margin-top: 15px; margin-bottom: 5px;">Terima Kasih Atas Kepercayaan Anda</p>
+</div>
+  </div>
+`;
+}
+
+function printNota(id) {
+  const t = currentTransactions.find(item => item.id === id);
+  if (!t) return;
+
+  const printArea = document.getElementById('printArea');
+  
+  // Set konten nota
+  printArea.innerHTML = generateNotaHTML(t);
+  
+  // Pastikan elemen terlihat di DOM sebelum perintah print
+  printArea.classList.remove('hidden');
+
+  setTimeout(() => {
+    window.print();
+    // Setelah print selesai (atau dibatalkan), sembunyikan kembali
+    printArea.classList.add('hidden');
+  }, 300);
+}
+    
     window.onload = () => {
       refreshData();
       fetchMasterStock();
