@@ -187,6 +187,8 @@
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzq0QBSEYMrKr03dhcjPMryLbt9ecznGUWk17jWbGGFjqePYlTsCpUSKVdSQMFnnNxAAQ/exec";
 
     let allTransactions = [];
+    let isDataLoaded = false;
+    let isFullDataLoaded = false;
     let currentFilter = 'today';
     let currentView = 'Semua';
     let currentCategory = 'SEMUA';
@@ -222,9 +224,9 @@
                 <button onclick="setFilter('month')" id="f-month" class="px-3 py-1 bg-gray-100 rounded-full transition">Bulan Ini</button>
                 <button onclick="setFilter('all')" id="f-all" class="px-3 py-1 bg-gray-100 rounded-full transition">Semua</button>
                 <div class="flex items-center gap-1 bg-slate-50 border rounded-full px-2 py-1 ml-1">
-                  <input type="date" id="f-date-start" onchange="renderTransactions()" class="bg-transparent outline-none border-none text-[9px]">
+                  <input type="date" id="f-date-start" onchange="checkManualDateChange()" class="bg-transparent outline-none border-none text-[9px]">
                   <span class="text-gray-400 font-bold">-</span>
-                  <input type="date" id="f-date-end" onchange="renderTransactions()" class="bg-transparent outline-none border-none text-[9px]">
+                  <input type="date" id="f-date-end" onchange="checkManualDateChange()" class="bg-transparent outline-none border-none text-[9px]">
                 </div>
               </div>
             </div>
@@ -242,12 +244,11 @@
               <button onclick="setView('Rekening')" id="v-bank" class="flex-1 py-3 font-semibold text-gray-500 hover:bg-gray-50 transition border-b-2 border-transparent">Rekening</button>
               <button onclick="setView('Semua')" id="v-all" class="flex-1 py-3 font-semibold border-b-2 border-blue-600 text-blue-600 transition">Semua</button>
             </div>
-            <div class="flex border-b text-[10px] uppercase tracking-wider font-bold text-slate-400 no-scrollbar overflow-x-auto bg-slate-50/50">
-              <button onclick="setCategory('SEMUA')" id="cat-semua" class="flex-1 min-w-[80px] py-2 border-b-2 border-blue-500 text-blue-600 bg-white font-bold transition">Semua</button>
-              <button onclick="setCategory('PENJUALAN')" id="cat-penjualan" class="flex-1 min-w-[80px] py-2 border-b-2 border-transparent hover:bg-gray-50 transition">Jual</button>
-              <button onclick="setCategory('PEMBELIAN')" id="cat-pembelian" class="flex-1 min-w-[80px] py-2 border-b-2 border-transparent hover:bg-gray-50 transition">Beli</button>
-              <button onclick="setCategory('OPERASIONAL')" id="cat-operasional" class="flex-1 min-w-[80px] py-2 border-b-2 border-transparent hover:bg-gray-50 transition">Ops</button>
-            </div>
+          <div class="flex border-b text-[10px] uppercase tracking-wider font-bold text-slate-400 no-scrollbar overflow-x-auto bg-slate-50/50">
+  <button onclick="setCategory('SEMUA')" id="cat-semua" class="flex-1 min-w-[80px] py-2 border-b-2 border-blue-500 text-blue-600 bg-white font-bold transition">Semua</button>
+  <button onclick="setCategory('MASUK')" id="cat-masuk" class="flex-1 min-w-[80px] py-2 border-b-2 border-transparent hover:bg-gray-50 transition">Masuk</button>
+  <button onclick="setCategory('KELUAR')" id="cat-keluar" class="flex-1 min-w-[80px] py-2 border-b-2 border-transparent hover:bg-gray-50 transition">Keluar</button>
+</div>
             <div id="listContainer" class="divide-y max-h-[500px] overflow-y-auto"></div>
           </div>
         </div>
@@ -256,19 +257,41 @@
       fetchTransactions();
     }
 
-    async function fetchTransactions() {
-      try {
-        const res = await fetch(`${WEB_APP_URL}?action=getTransactions&_=${Date.now()}`);
-        allTransactions = await res.json();
-        setFilter('today'); 
-      } catch (e) {
-        document.getElementById('listContainer').innerHTML = `<div class="p-8 text-center text-red-500 font-bold">Gagal mengambil data.</div>`;
-      }
+async function fetchTransactions() {
+  // Jika berpindah tab dan data sudah ada, jangan ambil ulang
+  if (isDataLoaded) {
+    renderTransactions();
+    return;
+  }
+
+  showLoading(true);
+  
+  try {
+    // Ambil ID terakhir yang kita punya di memori (untuk efisiensi server)
+    const lastId = allTransactions.length > 0 ? allTransactions[0].id : '';
+    
+    const res = await fetch(`${WEB_APP_URL}?action=getTransactions&lastId=${lastId}&_=${Date.now()}`);
+    const newData = await res.json();
+    
+    if (newData.length > 0) {
+      // Gabungkan data baru di baris paling atas
+      allTransactions = [...newData, ...allTransactions];
     }
+    
+    isDataLoaded = true;
+    setFilter('today'); // Tampilkan hari ini secara default
+    
+  } catch (e) {
+    console.error(e);
+    document.getElementById('listContainer').innerHTML = `<div class="p-8 text-center text-red-500 font-bold">Gagal sinkron data.</div>`;
+  } finally {
+    showLoading(false);
+  }
+}
 
     function setCategory(cat) {
       currentCategory = cat;
-      const categories = ['SEMUA', 'PENJUALAN', 'PEMBELIAN', 'OPERASIONAL'];
+      const categories = ['SEMUA', 'MASUK', 'KELUAR'];
       categories.forEach(c => {
         const el = document.getElementById(`cat-${c.toLowerCase()}`);
         if (el) el.className = (c === cat) ? "flex-1 py-2 border-b-2 border-blue-500 text-blue-600 bg-white font-bold transition" : "flex-1 py-2 border-b-2 border-transparent hover:bg-gray-50 transition";
@@ -285,7 +308,7 @@
 
      const filtered = allTransactions.filter(t => {
   if (currentView !== 'Semua' && t.metode !== currentView) return false;
-  if (currentCategory !== 'SEMUA' && (!t.kat || t.kat.toUpperCase().trim() !== currentCategory)) return false;
+  if (currentCategory !== 'SEMUA' && t.tipe !== currentCategory) return false;
   
   const tDate = t.waktu.split(' ')[0]; // Mengambil bagian YYYY-MM-DD
   
@@ -334,7 +357,7 @@
       lucide.createIcons();
     }
 
-    function setFilter(f) {
+  async  function setFilter(f) {
   currentFilter = f;
   const now = new Date();
   const year = now.getFullYear();
@@ -366,10 +389,43 @@
     document.getElementById('f-date-start').value = '';
     document.getElementById('f-date-end').value = '';
   }
-
-  // 3. Jalankan Render Data
-  renderTransactions();
+// 3. LOGIKA TARIK DATA OTOMATIS
+  // Jika pilih 'month' atau 'all' DAN belum pernah tarik data penuh
+  if ((f === 'month' || f === 'all') && !isFullDataLoaded) {
+    await fetchFullTransactions();
+  } else {
+    renderTransactions();
+  }
 }
+
+async function fetchFullTransactions() {
+  showLoading(true);
+  try {
+    // Panggil tanpa parameter range=today untuk mengambil semua data
+    const res = await fetch(`${WEB_APP_URL}?action=getTransactions&_=${Date.now()}`);
+    const data = await res.json();
+    
+    allTransactions = data; // Ganti cache dengan data lengkap
+    isFullDataLoaded = true; // Tandai bahwa data sudah lengkap
+    isDataLoaded = true;
+    
+    renderTransactions();
+  } catch (e) {
+    alert("Gagal menarik data riwayat lengkap");
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function checkManualDateChange() {
+  // Jika user ubah tanggal manual dan data belum lengkap, tarik semua data
+  if (!isFullDataLoaded) {
+    await fetchFullTransactions();
+  } else {
+    renderTransactions();
+  }
+}
+    
     function setView(v) {
       currentView = v;
       ['v-cash', 'v-bank', 'v-all'].forEach(id => {
@@ -444,6 +500,7 @@
 
    function changeTab(tab) {
   activeTab = tab;
+    
   const menuContainer = document.getElementById('menu-container');
   
   // Update UI Navigasi
@@ -819,7 +876,8 @@ function addItem(autoOpen = true) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-
+isDataLoaded = false;
+isFullDataLoaded = false;
         setTimeout(() => {
           refreshData(); 
           fetchMasterStock();
@@ -1098,7 +1156,8 @@ async function eksekusiPelunasanUtang(id, nominal) {
       mode: "no-cors", 
       body: JSON.stringify(payload) 
     });
-    
+  isDataLoaded = false;
+isFullDataLoaded = false;
     setTimeout(() => {
       refreshData();
       if (typeof fetchUtangList === 'function') fetchUtangList(); // Refresh daftar utang
@@ -1274,7 +1333,8 @@ async function saveBayarPiutang(id, sisa) {
       mode: "no-cors", 
       body: JSON.stringify(payload) 
     }); 
-    
+isDataLoaded = false;
+isFullDataLoaded = false;
     setTimeout(() => {
       refreshData(); 
       fetchPiutangList(); 
@@ -1382,7 +1442,8 @@ async function saveTransfer() {
       method: "POST", 
       body: JSON.stringify(payload) 
     });
-    
+ isDataLoaded = false;
+isFullDataLoaded = false;
     // Memberikan jeda agar sinkronisasi di Google Sheet selesai
     setTimeout(() => {
       refreshData();
@@ -1499,7 +1560,8 @@ async function executeCancel(id) {
       mode: "no-cors", 
       body: JSON.stringify(payload) 
     });
-    
+ isDataLoaded = false;
+isFullDataLoaded = false;
     // Sesuai Ledger Anda: Pesanan dibatalkan ditandai "CANCEL ORDER" agar tidak pengaruhi saldo
     setTimeout(() => {
       refreshData();
