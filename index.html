@@ -299,63 +299,84 @@ async function fetchTransactions() {
       renderTransactions();
     }
 
-    function renderTransactions() {
-      const container = document.getElementById('listContainer');
-      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-      const ds = document.getElementById('f-date-start').value;
-      const de = document.getElementById('f-date-end').value;
-      container.innerHTML = '';
+  function renderTransactions() {
+  const container = document.getElementById('listContainer');
+  // Pastikan elemen input ada sebelum mengambil value untuk menghindari error
+  const searchInput = document.getElementById('searchInput');
+  const dateStartInput = document.getElementById('f-date-start');
+  const dateEndInput = document.getElementById('f-date-end');
 
-     const filtered = allTransactions.filter(t => {
-  if (currentView !== 'Semua' && t.metode !== currentView) return false;
-  if (currentCategory !== 'SEMUA' && t.tipe !== currentCategory) return false;
+  const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+  const ds = dateStartInput ? dateStartInput.value : '';
+  const de = dateEndInput ? dateEndInput.value : '';
   
-  const tDate = t.waktu.split(' ')[0]; // Mengambil bagian YYYY-MM-DD
-  
-  // Logika Filter Tanggal
-  if (currentFilter !== 'all') {
-    const ds = document.getElementById('f-date-start').value;
-    const de = document.getElementById('f-date-end').value;
+  container.innerHTML = '';
+
+  const filtered = allTransactions.filter(t => {
+    // 1. Filter Tab Metode (Semua, Tunai, Transfer, dll)
+    if (currentView !== 'Semua' && t.metode !== currentView) return false;
     
-    if (ds && de) { 
-      if (tDate < ds || tDate > de) return false; 
-    } else if (ds && tDate !== ds) {
-      return false;
-    }
+    // 2. Filter Kategori (Masuk, Keluar)
+    if (currentCategory !== 'SEMUA' && t.tipe !== currentCategory) return false;
+    
+    // 3. Filter Rentang Tanggal
+    const tDate = t.waktu.split(' ')[0]; // Mengambil bagian YYYY-MM-DD
+    if (ds && tDate < ds) return false;
+    if (de && tDate > de) return false;
+
+    // 4. Filter Pencarian (ID, Keterangan, atau Pelanggan/Sub)
+    const matchesSearch = 
+      t.id.toLowerCase().includes(searchTerm) || 
+      t.ket.toLowerCase().includes(searchTerm) || 
+      (t.sub && t.sub.toLowerCase().includes(searchTerm));
+    
+    return matchesSearch;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="p-12 text-center">
+        <div class="text-gray-300 mb-2"><i data-lucide="search-x" class="w-12 h-12 mx-auto"></i></div>
+        <p class="text-gray-400 italic text-sm">Tidak ada transaksi ditemukan</p>
+      </div>`;
+    lucide.createIcons();
+    return;
   }
 
-  return t.id.toLowerCase().includes(searchTerm) || 
-         t.ket.toLowerCase().includes(searchTerm) || 
-         (t.sub && t.sub.toLowerCase().includes(searchTerm));
-});
-      if (filtered.length === 0) {
-        container.innerHTML = `<div class="p-12 text-center text-gray-400 italic text-sm">Tidak ada transaksi ditemukan</div>`;
-        return;
-      }
-
-      filtered.forEach(t => {
-        const isMasuk = t.tipe === 'MASUK';
-        const amount = isMasuk ? t.masuk : t.keluar;
-        const div = document.createElement('div');
-        div.className = `p-4 hover:bg-slate-50 cursor-pointer flex justify-between items-center border-l-4 ${isMasuk ? 'border-l-green-500' : 'border-l-red-500'}`;
-        div.onclick = () => showDetail(t);
-        div.innerHTML = `
-          <div class="flex-1 pr-4">
-            <p class="text-[10px] text-gray-500 mb-0.5">${t.waktu}</p>
-            <p class="font-semibold text-sm text-slate-800">${t.ket}</p>
-            <div class="flex gap-2 mt-1">
-              <span class="text-[9px] bg-slate-100 px-2 py-0.5 rounded uppercase font-bold text-slate-500">${t.kat}</span>
-              ${t.sub !== '-' ? `<span class="text-[9px] text-slate-400 italic">${t.sub}</span>` : ''}
-            </div>
-          </div>
-          <div class="text-right">
-            <p class="font-bold text-sm ${isMasuk ? 'text-green-600' : 'text-red-600'}">${isMasuk ? '+' : '-'} ${formatRupiah(amount)}</p>
-          </div>
-        `;
-        container.appendChild(div);
-      });
-      lucide.createIcons();
-    }
+  // Render Item
+  filtered.forEach(t => {
+    const isMasuk = t.tipe === 'MASUK';
+    const amount = isMasuk ? t.masuk : t.keluar;
+    const div = document.createElement('div');
+    
+    // Style Card: border kiri tebal sesuai tipe, efek tekan (active:scale) untuk mobile
+    div.className = `p-4 bg-white border-b border-slate-50 hover:bg-slate-50 cursor-pointer flex justify-between items-center border-l-4 ${isMasuk ? 'border-l-green-500' : 'border-l-red-500'} active:scale-[0.98] transition-all`;
+    
+    // Trigger Modal Detail
+    div.onclick = () => showDetail(t);
+    
+    div.innerHTML = `
+      <div class="flex-1 pr-4">
+        <p class="text-[10px] text-gray-400 font-mono mb-0.5">${t.id}</p>
+        <p class="font-bold text-sm text-slate-800 leading-tight">${t.ket}</p>
+        <div class="flex items-center gap-2 mt-1.5">
+          <span class="text-[9px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-bold uppercase">${t.kat}</span>
+          <span class="text-[10px] text-gray-400 font-medium">${t.waktu.split(' ')[1].substring(0, 5)}</span>
+          ${t.sub && t.sub !== '-' ? `<span class="text-[9px] text-blue-400 font-medium italic">@${t.sub}</span>` : ''}
+        </div>
+      </div>
+      <div class="text-right">
+        <p class="font-black text-sm ${isMasuk ? 'text-green-600' : 'text-red-600'}">
+          ${isMasuk ? '+' : '-'} ${formatRupiah(amount)}
+        </p>
+        <p class="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">${t.metode}</p>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+  
+  lucide.createIcons();
+}
 
   async  function setFilter(f) {
   currentFilter = f;
@@ -437,36 +458,83 @@ async function checkManualDateChange() {
       renderTransactions();
     }
 
-    function showDetail(t) {
-      const overlay = document.getElementById('modalOverlay');
-      const content = document.getElementById('modalContent');
-      overlay.classList.remove('hidden');
-      
-      let detailHtml = (t.detail || []).map(d => `
-        <div class="flex justify-between text-xs py-1 border-b border-dashed">
-          <span>${d.nama} (x${d.qty})</span>
-          <span class="font-mono">${formatRupiah(d.qty * d.harga)}</span>
-        </div>`).join('');
+   function showDetail(t) {
+  const overlay = document.getElementById('modalOverlay');
+  const content = document.getElementById('modalContent');
+  
+  // Pastikan modal muncul dengan efek transisi jika ada
+  overlay.classList.remove('hidden');
+  
+  // Hitung ulang total jika t.masuk atau t.keluar bernilai 0
+  const totalAmount = t.masuk || t.keluar;
+  const isMasuk = t.tipe === 'MASUK';
 
-      content.innerHTML = `
-        <h2 class="text-lg font-bold mb-4">Detail Transaksi</h2>
-        <div class="space-y-3 text-sm">
-          <div class="flex justify-between"><span class="text-gray-500">ID / Waktu</span><span class="font-bold text-right">${t.id}<br><small>${t.waktu}</small></span></div>
-          <div class="flex justify-between border-t pt-2"><span class="text-gray-500">Kategori</span><span class="font-bold">${t.kat}</span></div>
-          <div class="flex justify-between"><span class="text-gray-500">Metode</span><span class="font-bold">${t.metode}</span></div>
-          <div class="pt-2">
-            <p class="text-gray-500 mb-1">Rincian Item:</p>
-            <div class="bg-slate-50 p-2 rounded border">${detailHtml || '<p class="italic text-xs text-center p-2">Tidak ada item</p>'}</div>
-          </div>
-          <div class="flex justify-between text-lg font-black pt-3 border-t">
-            <span>Total</span><span class="${t.tipe === 'MASUK' ? 'text-green-600' : 'text-red-600'}">${formatRupiah(t.masuk || t.keluar)}</span>
+  // Mapping detail item dengan desain yang lebih bersih
+  let detailHtml = (t.detail || []).map(d => `
+    <div class="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
+      <div class="flex flex-col">
+        <span class="text-slate-700 font-medium">${d.nama}</span>
+        <span class="text-[10px] text-slate-400">${d.qty} x ${formatRupiah(d.harga)}</span>
+      </div>
+      <span class="font-mono font-bold text-slate-700">${formatRupiah(d.qty * d.harga)}</span>
+    </div>`).join('');
+
+  content.innerHTML = `
+    <div class="flex flex-col items-center mb-6">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mb-4"></div>
+      <h2 class="text-xl font-black text-slate-800">Detail Transaksi</h2>
+    </div>
+
+    <div class="space-y-4">
+      <div class="bg-slate-50 p-4 rounded-2xl space-y-3">
+        <div class="flex justify-between items-start">
+          <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">ID / Waktu</span>
+          <div class="text-right">
+            <p class="font-mono text-sm font-bold text-slate-700">${t.id}</p>
+            <p class="text-[11px] text-slate-400">${t.waktu}</p>
           </div>
         </div>
-        <button onclick="closeModal()" class="w-full mt-6 py-3 bg-slate-100 rounded-xl font-bold">Tutup</button>
-      `;
-      lucide.createIcons();
-    }
+        
+        <div class="flex justify-between items-center border-t border-slate-200 pt-3">
+          <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Kategori</span>
+          <span class="px-3 py-1 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600">${t.kat}</span>
+        </div>
 
+        <div class="flex justify-between items-center">
+          <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Metode</span>
+          <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-tighter border border-blue-100">${t.metode}</span>
+        </div>
+      </div>
+
+      <div>
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Rincian Item</p>
+        <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm max-h-[250px] overflow-y-auto">
+          ${detailHtml || `
+            <div class="text-center py-4">
+              <i data-lucide="package-open" class="w-8 h-8 mx-auto text-slate-200 mb-2"></i>
+              <p class="italic text-xs text-slate-400">Tidak ada rincian item</p>
+            </div>
+          `}
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center p-4 bg-slate-900 rounded-2xl shadow-xl">
+        <span class="text-slate-400 font-bold">Total Akhir</span>
+        <span class="text-xl font-black ${isMasuk ? 'text-green-400' : 'text-rose-400'}">
+          ${isMasuk ? '+' : '-'} ${formatRupiah(totalAmount)}
+        </span>
+      </div>
+    </div>
+
+    <button onclick="closeModal()" class="w-full mt-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold active:scale-95 transition-all text-sm">
+      Tutup
+    </button>
+  `;
+  
+  // Render ulang icon lucide di dalam modal
+  lucide.createIcons();
+}
+    
     async function refreshData() {
       showLoading(true);
       try {
@@ -1593,5 +1661,9 @@ isFullDataLoaded = false;
       changeTab('penjualan');
     };
   </script>
+  <div id="modalOverlay" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-all">
+  <div id="modalContent" class="bg-white w-full max-w-md rounded-t-[32px] sm:rounded-[32px] p-6 shadow-2xl page-transition">
+    </div>
+</div>
 </body>
 </html>
