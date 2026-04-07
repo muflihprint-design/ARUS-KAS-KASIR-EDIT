@@ -93,6 +93,21 @@
   flex-direction: column;
 }
 
+    /* Menghilangkan scrollbar tapi tetap bisa di-scroll (Opsional, agar lebih bersih) */
+#modalContent::-webkit-scrollbar {
+  display: none;
+}
+#modalContent {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+  
+  /* GANTI 'smooth' MENJADI 'auto' UNTUK MENGHAPUS EFEK MELUNCUR */
+  scroll-behavior: auto !important; 
+  
+  /* Memastikan momentum scroll di iOS tetap enak */
+  -webkit-overflow-scrolling: touch; 
+}
+
 /* Animasi baru agar modal muncul dari atas */
 @keyframes slideDown {
   from { transform: translateY(-100%); opacity: 0; }
@@ -131,12 +146,16 @@
     </div>
   </div>
 
-<div id="general-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-  <div class="bg-white w-full rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-    <div id="modalContent" class="p-6">
+<div id="general-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md transition-all">
+  
+  <div class="bg-white w-full max-w-md rounded-[32px] shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in duration-200">
+    
+    <div id="modalContent" class="p-6 overflow-y-auto">
       </div>
+
   </div>
 </div>
+  
   
 
   <header class="bg-white border-b sticky top-0 z-50 p-4 shadow-sm">
@@ -206,10 +225,25 @@
 
     function closeModal() {
   const modal = document.getElementById('general-modal');
+  const content = document.getElementById('modalContent');
+ if (content) {
+      content.scrollTop = 0;
+    }
+      
   if (modal) {
     modal.classList.add('hidden');
+    modal.style.display = 'none';
+
   }
 }
+
+// Tambahan: Tutup modal saat user mengetuk area gelap (overlay)
+window.addEventListener('click', function(event) {
+  const modal = document.getElementById('general-modal');
+  if (event.target === modal) {
+    closeModal();
+  }
+});
  
 
     /** HALAMAN RIWAYAT **/
@@ -459,80 +493,176 @@ async function checkManualDateChange() {
     }
 
    function showDetail(t) {
-  const overlay = document.getElementById('modalOverlay');
+  // 1. Sinkronisasi ID Modal sesuai fungsi closeModal Anda
+  const overlay = document.getElementById('general-modal');
   const content = document.getElementById('modalContent');
   
-  // Pastikan modal muncul dengan efek transisi jika ada
-  overlay.classList.remove('hidden');
-  
-  // Hitung ulang total jika t.masuk atau t.keluar bernilai 0
-  const totalAmount = t.masuk || t.keluar;
-  const isMasuk = t.tipe === 'MASUK';
+  if (!overlay || !content) {
+    console.error("Elemen modal tidak ditemukan!");
+    return;
+  }
 
-  // Mapping detail item dengan desain yang lebih bersih
-  let detailHtml = (t.detail || []).map(d => `
-    <div class="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
-      <div class="flex flex-col">
-        <span class="text-slate-700 font-medium">${d.nama}</span>
-        <span class="text-[10px] text-slate-400">${d.qty} x ${formatRupiah(d.harga)}</span>
-      </div>
-      <span class="font-mono font-bold text-slate-700">${formatRupiah(d.qty * d.harga)}</span>
-    </div>`).join('');
+  isDetailChanged = false;
+content.style.opacity = "0";
+
+    // LANGKAH 2: Reset scroll saat modal masih belum terlihat
+    content.scrollTop = 0;
+    
+
+  let labelSub = "Sub-keterangan";
+  if (t.kat === 'PENJUALAN') labelSub = "Nama Pelanggan";
+  if (t.kat === 'PEMBELIAN') labelSub = "Nama Supplier";
+
+  // 2. Proteksi & Parsing Detail (Mencegah error .map is not a function)
+  let items = [];
+  try {
+    if (Array.isArray(t.detail)) {
+      items = t.detail;
+    } else if (typeof t.detail === 'string' && t.detail.trim() !== '') {
+      items = JSON.parse(t.detail);
+    }
+  } catch (e) {
+    console.error("Gagal parse detail:", e);
+    items = [];
+  }
+
+  let detailHtml = '';
+  let calculatedSubtotal = 0;
+
+  if (items.length > 0) {
+    detailHtml = `
+      <div class="mt-6 border rounded-xl overflow-hidden shadow-sm">
+        <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center">
+            <p class="font-bold text-[10px] text-slate-500 uppercase tracking-wider">Item & Status Periksa</p>
+        </div>
+        <table class="w-full text-xs">
+          <thead class="bg-slate-50 border-b text-slate-400">
+            <tr>
+              <th class="p-2 text-left w-10">Pilih</th>
+              <th class="p-2 text-left">Item</th>
+              <th class="p-2 text-center">Qty</th>
+              <th class="p-2 text-right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            ${items.map((d, index) => {
+              const lineTotal = (parseFloat(d.qty) || 0) * (parseFloat(d.harga) || 0);
+              calculatedSubtotal += lineTotal;
+              const isChecked = d.checked || false; 
+
+              return `
+              <tr class="${isChecked ? 'bg-green-50/50' : 'bg-white'} transition-colors">
+                <td class="p-2 text-center">
+                  <input type="checkbox" 
+                    ${isChecked ? 'checked' : ''} 
+                    class="w-4 h-4 cursor-pointer accent-green-600"
+                    onchange="toggleItemCheck('${t.id}', ${index}, this.checked)">
+                </td>
+                <td class="p-2">
+                  <span class="font-medium ${isChecked ? 'line-through text-slate-400' : 'text-slate-700'}">${d.nama}</span>
+                </td>
+                <td class="p-2 text-center text-slate-500">${d.qty}</td>
+                <td class="p-2 text-right font-mono ${isChecked ? 'text-slate-300' : 'text-slate-600'}">${formatRupiah(lineTotal)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  const diskon = parseFloat(t.diskon) || 0;
+  const totalSetelahDiskon = calculatedSubtotal - diskon;
+
+  const rincianBiayaHtml = calculatedSubtotal > 0 ? `
+    <div class="mt-4 p-4 bg-slate-50 border rounded-xl space-y-2">
+       <div class="flex justify-between items-center text-xs text-slate-500">
+         <span>Subtotal Kotor</span>
+         <span>${formatRupiah(calculatedSubtotal)}</span>
+       </div>
+       <div class="flex justify-between items-center text-xs text-red-500">
+         <span>Potongan Diskon</span>
+         <span>- ${formatRupiah(diskon)}</span>
+       </div>
+       <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+         <span class="text-xs font-bold text-blue-600 uppercase">Total Tagihan Akhir</span>
+         <span class="text-lg font-bold text-blue-700">${formatRupiah(totalSetelahDiskon)}</span>
+       </div>
+    </div>
+  ` : '';
 
   content.innerHTML = `
-    <div class="flex flex-col items-center mb-6">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mb-4"></div>
-      <h2 class="text-xl font-black text-slate-800">Detail Transaksi</h2>
+    <div class="flex items-center gap-3 mb-4">
+        <div class="p-3 rounded-full ${t.tipe === 'MASUK' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">
+          <i data-lucide="${t.tipe === 'MASUK' ? 'trending-up' : 'trending-down'}"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold">Detail ${t.kat}</h2>
+          <p class="text-xs text-gray-400 font-medium">${t.id}</p>
+        </div>
     </div>
-
-    <div class="space-y-4">
-      <div class="bg-slate-50 p-4 rounded-2xl space-y-3">
-        <div class="flex justify-between items-start">
-          <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">ID / Waktu</span>
-          <div class="text-right">
-            <p class="font-mono text-sm font-bold text-slate-700">${t.id}</p>
-            <p class="text-[11px] text-slate-400">${t.waktu}</p>
-          </div>
-        </div>
-        
-        <div class="flex justify-between items-center border-t border-slate-200 pt-3">
-          <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Kategori</span>
-          <span class="px-3 py-1 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600">${t.kat}</span>
-        </div>
-
-        <div class="flex justify-between items-center">
-          <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Metode</span>
-          <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-tighter border border-blue-100">${t.metode}</span>
-        </div>
-      </div>
-
+    
+    <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm bg-slate-50 p-4 rounded-xl border mb-4">
       <div>
-        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Rincian Item</p>
-        <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm max-h-[250px] overflow-y-auto">
-          ${detailHtml || `
-            <div class="text-center py-4">
-              <i data-lucide="package-open" class="w-8 h-8 mx-auto text-slate-200 mb-2"></i>
-              <p class="italic text-xs text-slate-400">Tidak ada rincian item</p>
-            </div>
-          `}
+        <p class="text-[10px] text-gray-500 font-bold uppercase">Waktu</p>
+        <p class="font-medium">${t.waktu}</p>
+      </div>
+      <div>
+        <p class="text-[10px] text-gray-500 font-bold uppercase">Metode</p>
+        <p class="font-medium">${t.metode}</p>
+      </div>
+      <div class="col-span-2 pt-2 border-t">
+        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">${labelSub}</label>
+        <div class="flex items-center gap-2 w-full">
+          <input id="edit_sub_input" type="text" 
+            value="${t.sub !== '-' ? t.sub : ''}" 
+            class="min-w-0 flex-1 p-2 border rounded-lg text-sm font-bold bg-white outline-none focus:ring-2 focus:ring-blue-100"
+            placeholder="Input sub...">
+          <button onclick="updateSub('${t.id}')" 
+            class="flex-shrink-0 bg-blue-600 text-white p-2 md:px-4 md:py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span class="hidden md:inline">Simpan</span>
+          </button>
         </div>
       </div>
-
-      <div class="flex justify-between items-center p-4 bg-slate-900 rounded-2xl shadow-xl">
-        <span class="text-slate-400 font-bold">Total Akhir</span>
-        <span class="text-xl font-black ${isMasuk ? 'text-green-400' : 'text-rose-400'}">
-          ${isMasuk ? '+' : '-'} ${formatRupiah(totalAmount)}
-        </span>
+      <div class="col-span-2 pt-2 border-t">
+        <p class="text-[10px] text-gray-500 font-bold uppercase">Keterangan</p>
+        <p class="font-medium">${t.ket}</p>
       </div>
     </div>
 
-    <button onclick="closeModal()" class="w-full mt-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold active:scale-95 transition-all text-sm">
-      Tutup
-    </button>
+    ${rincianBiayaHtml}
+
+    <div class="mt-4 p-4 bg-white border-2 border-slate-100 rounded-xl flex justify-between items-center shadow-sm">
+       <div class="flex flex-col">
+          <span class="text-[10px] font-bold text-slate-400 uppercase">Kas ${t.tipe === 'MASUK' ? 'Diterima' : 'Dibayar'}</span>
+          ${totalSetelahDiskon > (t.masuk || t.keluar) ? '<span class="text-[9px] text-orange-500 font-bold italic">Dibayar Sebagian (DP)</span>' : ''}
+       </div>
+       <span class="text-2xl font-black text-slate-800">${formatRupiah(t.masuk > 0 ? t.masuk : t.keluar)}</span>
+    </div>
+    
+    ${detailHtml}
+    
+    <div class="mt-6 grid ${t.kat && t.kat.toUpperCase() === 'PENJUALAN' ? 'grid-cols-2' : 'grid-cols-1'} gap-3">
+       <button onclick="closeModal()" class="py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition">
+         Tutup
+       </button>
+       ${t.kat && t.kat.toUpperCase() === 'PENJUALAN' ? `
+          <button onclick="shareNotaJPG('${t.id}')" class="py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2">
+            <i data-lucide="share-2" class="w-4 h-4"></i> Bagikan Nota (JPG)
+          </button>
+        ` : ''}
+    </div>
   `;
-  
-  // Render ulang icon lucide di dalam modal
-  lucide.createIcons();
+ // LANGKAH 4: Tampilkan modal
+    overlay.classList.remove('hidden');
+    overlay.style.display = 'flex';
+
+    // LANGKAH 5: Tampilkan kembali konten secara instan
+    content.style.opacity = "1";
+    
+    // Reset sekali lagi untuk memastikan (instan karena scroll-behavior: auto)
+    content.scrollTo(0, 0);
+  if (window.lucide) lucide.createIcons();
 }
     
     async function refreshData() {
