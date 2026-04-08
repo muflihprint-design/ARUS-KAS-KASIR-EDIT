@@ -231,9 +231,10 @@ display: block !important;
     </div>
   </header>
 
-  <main id="main-content" class="mx-auto p-4 page-transition">
-    <div id="menu-container" class="space-y-4"></div>
-  </main>
+  <main id="main-content" class="mx-auto p-4">
+  <div id="menu-container" class="page-transition space-y-4"></div>
+  <div id="riwayat-container" class="page-transition hidden"></div>
+</main>
 
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-1 z-[100] flex justify-around items-center shadow-[0_-8px_20px_rgba(0,0,0,0.03)]">
     <button onclick="changeTab('penjualan')" id="nav-penjualan" class="flex flex-col items-center gap-1 py-2 px-3 text-slate-400 nav-active">
@@ -259,7 +260,7 @@ display: block !important;
   </nav>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzAOBv5lT6xQcvQkrLgcDfXwq40mLbgsn-qW8m4_4AdnXcXJMuoWyAPBAWMvQjNyCiM6w/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxJOi4nKk_XMp7z9xFRMM2OTG1Y8s8q8_98erMAkYsqQIFYNnRfqyFZtisntPdZZu7OxA/exec";
 
     let allTransactions = [];
     let isDataLoaded = false;
@@ -279,17 +280,19 @@ display: block !important;
       document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
     }
 
-    function closeModal() {
+  function closeModal() {
   const modal = document.getElementById('general-modal');
   const content = document.getElementById('modalContent');
- if (content) {
-      content.scrollTop = 0;
-    }
+  
+  if (content) {
+    content.scrollTop = 0;
+    content.innerHTML = ''; // Kosongkan agar tidak ada ID ganda
+  }
       
   if (modal) {
     modal.classList.add('hidden');
-    modal.style.display = 'none';
-
+    // Hapus style display manual agar tidak bentrok dengan class Tailwind
+    modal.style.display = ''; 
   }
 }
 
@@ -303,11 +306,11 @@ window.addEventListener('click', function(event) {
  
 
     /** HALAMAN RIWAYAT **/
-    function renderRiwayatPage() {
-      const container = document.getElementById('menu-container');
-      container.innerHTML = `
-        <div class="overflow-hidden">
-          <div class="p-4 border-b flex flex-col gap-3">
+   function initRiwayatStructure() {
+  const container = document.getElementById('riwayat-container');
+  container.innerHTML = `
+    <div class="overflow-hidden bg-white rounded-3xl border shadow-sm">
+      <div class="p-4 border-b flex flex-col gap-3">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                            <div class="flex flex-wrap gap-1 text-[10px] items-center">
                 <button onclick="setFilter('today')" id="f-today" class="px-3 py-1 bg-blue-600 text-white rounded-full transition">Hari Ini</button>
@@ -348,36 +351,32 @@ window.addEventListener('click', function(event) {
     }
 
 async function fetchTransactions() {
-  // Jika berpindah tab dan data sudah ada, jangan ambil ulang
-  if (isDataLoaded) {
+  if (isDataLoaded && allTransactions.length > 0) {
     renderTransactions();
     return;
   }
 
   showLoading(true);
-  
   try {
-    // Ambil ID terakhir yang kita punya di memori (untuk efisiensi server)
-    const lastId = allTransactions.length > 0 ? allTransactions[0].id : '';
-    
-    const res = await fetch(`${WEB_APP_URL}?action=getTransactions&lastId=${lastId}&_=${Date.now()}`);
+    const res = await fetch(`${WEB_APP_URL}?action=getTransactions&_=${Date.now()}`);
     const newData = await res.json();
     
-    if (newData.length > 0) {
-      // Gabungkan data baru di baris paling atas
-      allTransactions = [...newData, ...allTransactions];
-    }
-    
+    // Simpan semua data yang didapat ke memori
+    allTransactions = newData;
     isDataLoaded = true;
-    setFilter('today'); // Tampilkan hari ini secara default
+    
+    // Paksa filter ke 'today' agar UI terupdate
+    setFilter('today'); 
     
   } catch (e) {
-    console.error(e);
-    document.getElementById('listContainer').innerHTML = `<div class="p-8 text-center text-red-500 font-bold">Gagal sinkron data.</div>`;
+    console.error("Error Detail:", e);
+    document.getElementById('listContainer').innerHTML = 
+      `<div class="p-8 text-center text-red-500 font-bold">Gagal sinkron data. Pastikan internet stabil.</div>`;
   } finally {
     showLoading(false);
   }
 }
+
 
     function setCategory(cat) {
       currentCategory = cat;
@@ -754,18 +753,37 @@ content.style.opacity = "0";
 
    function changeTab(tab) {
   activeTab = tab;
-    
   const menuContainer = document.getElementById('menu-container');
+  const riwayatContainer = document.getElementById('riwayat-container');
   
+  // 1. OTOMATIS SCROLL KE ATAS
+  // Menggunakan smooth agar transisi lebih nyaman di mata
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
   // Update UI Navigasi
   document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('nav-active'));
   const activeBtn = document.getElementById('nav-' + tab);
   if (activeBtn) activeBtn.classList.add('nav-active');
 
   if (tab === 'riwayat') {
-    renderRiwayatPage();
-  } 
-  else if (tab === 'penjualan') {
+    menuContainer.classList.add('hidden'); // Sembunyikan form input
+    riwayatContainer.classList.remove('hidden'); // Tampilkan riwayat
+    
+    // Inisialisasi struktur riwayat jika belum ada sama sekali
+    if (!riwayatContainer.innerHTML.trim()) {
+      initRiwayatStructure();
+      fetchTransactions();
+    } else {
+      // Jika sudah ada, cukup refresh tampilan dengan data yang ada di memori
+      renderTransactions();
+    }
+  } else {
+    // Jika pindah ke tab Jual/Beli/Biaya
+    riwayatContainer.classList.add('hidden');
+    menuContainer.classList.remove('hidden');
+    
+    // Render form sesuai tab
+    if (tab === 'penjualan') {
     menuContainer.innerHTML = `
       <div class="space-y-4 page-transition">
         <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="shopping-cart" class="w-5 text-blue-600"></i> Penjualan Baru</h2>
@@ -927,11 +945,9 @@ content.style.opacity = "0";
         </div>
       </div>
     `;
-  }
-  else {
-    menuContainer.innerHTML = `<div class="p-10 text-center text-slate-400 font-bold uppercase text-xs tracking-widest">Halaman sedang disiapkan.</div>`;
-  }
-  lucide.createIcons();
+ }
+}
+    if (window.lucide) lucide.createIcons();
 }
 
 function addItem(autoOpen = true) {
@@ -1117,35 +1133,54 @@ function addItem(autoOpen = true) {
       return itemsData;
     }
 
-    async function runScript(actionName, payload, stayInTab) {
-      const btn = document.querySelector('button[onclick*="save"]');
-      if (btn) btn.disabled = true;
-      showLoading(true);
+   async function runScript(actionName, payload, stayInTab) {
+  const btn = document.querySelector('button[onclick*="save"]');
+  if (btn) btn.disabled = true;
+  showLoading(true);
 
-      try {
-        await fetch(WEB_APP_URL, {
-          method: "POST",
-          mode: "no-cors",
-          cache: "no-cache",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-isDataLoaded = false;
-isFullDataLoaded = false;
-        setTimeout(() => {
-          refreshData(); 
-          fetchMasterStock();
-         changeTab(stayInTab);
-          showLoading(false);
-        }, 1200);
+  try {
+    // HAPUS mode: "no-cors" agar bisa membaca respon JSON
+    const response = await fetch(WEB_APP_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
 
-      } catch (err) {
-        showLoading(false);
-        alert("Koneksi bermasalah. Data gagal terkirim!");
-      } finally {
-        if (btn) btn.disabled = false;
+    const result = await response.json();
+
+    if (result.status === 'success') {
+      // Masukkan data baru ke memori agar riwayat langsung terupdate
+      if (result.data && typeof allTransactions !== 'undefined') {
+        allTransactions.unshift(result.data);
       }
+
+      // Reset flag agar fetch selanjutnya mengambil data terbaru
+      isDataLoaded = false;
+      isFullDataLoaded = false;
+
+      // Berikan feedback instan tanpa menunggu 1.2 detik penuh
+      showLoading(false);
+      if (btn) btn.disabled = false;
+      
+      // Pindah ke tab riwayat agar user melihat datanya sudah masuk
+      changeTab('riwayat');
+      
+      // Refresh background data
+      refreshData();
+      fetchMasterStock();
+    } else {
+      throw new Error(result.message || "Gagal menyimpan");
     }
+
+  } catch (err) {
+    showLoading(false);
+    if (btn) btn.disabled = false;
+    // Jika masih gagal baca JSON karena CORS, minimal kita paksa refresh setelah jeda
+    console.error("Fetch error:", err);
+    setTimeout(() => {
+       location.reload(); 
+    }, 1000);
+  }
+}
 
     function savePenjualan() {
       const items = collectItems();
@@ -1317,7 +1352,7 @@ async function bayarUtang(idUtang, sisaLama, namaSupplier) {
     </div>`;
 
   try {
-    const response = await fetch(`${WEB_APP_URL}?action=getDetail&id=${encodeURIComponent(idUtang)}`);
+    const response = await fetch(`${WEB_APP_URL}?action=getDetail&id=${encodeURIComponent(idUtang)}&t=${Date.now()}`);
     const detailRaw = await response.json();
     let items = typeof detailRaw === 'string' ? JSON.parse(detailRaw) : detailRaw;
 
@@ -1396,31 +1431,47 @@ async function eksekusiPelunasanUtang(id, nominal) {
   const payload = {
     action: 'processTransaction',
     type: 'BAYAR_UTANG',
-    idUtang: id, // Sesuaikan dengan nama variabel di Apps Script (idUtang / idTransaksi)
+    idUtang: id,
     nominal: nominal,
     metode: metode
   };
   
-  closeModal();
+  closeModal(); // Menutup modal pelunasan
   showLoading(true);
   
   try {
-    await fetch(WEB_APP_URL, { 
+    const response = await fetch(WEB_APP_URL, { 
       method: "POST", 
-      mode: "no-cors", 
       body: JSON.stringify(payload) 
     });
-  isDataLoaded = false;
-isFullDataLoaded = false;
-    setTimeout(() => {
-      refreshData();
-      if (typeof fetchUtangList === 'function') fetchUtangList(); // Refresh daftar utang
+    const result = await response.json();
+
+    if (result.status === "success") {
+      // 1. Reset state agar aplikasi tahu data sudah berubah
+      isDataLoaded = false; 
+      allTransactions = []; 
+
+      // 2. Refresh data saldo dan data transaksi
+      await refreshData(); 
+      
+      // 3. Jika sedang di tab beli/utang, render ulang daftar utangnya
+      if (typeof fetchUtangList === 'function') {
+        await fetchUtangList();
+        // PENTING: Panggil kembali ikon agar tombol di list baru bisa diklik
+        if (window.lucide) lucide.createIcons();
+      }
+      
+      // 4. Jika sedang di tab riwayat, render ulang riwayatnya
+      if (activeTab === 'riwayat') renderTransactions();
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       showLoading(false);
-         }, 1500);
-    
+    }
   } catch (e) {
     showLoading(false);
-    alert("Koneksi gagal. Silakan coba lagi.");
+    console.error(e);
+    alert("Koneksi bermasalah. Data akan direfresh.");
+    refreshData();
   }
 }
     
@@ -1497,7 +1548,7 @@ async function bayarPiutang(id, sisa, nama) {
 
   try {
     // Mengambil rincian barang dari database transaksi menggunakan ID Penjualan
-    const response = await fetch(`${WEB_APP_URL}?action=getDetail&id=${encodeURIComponent(id)}`);
+   const response = await fetch(`${WEB_APP_URL}?action=getDetail&id=${encodeURIComponent(id)}&t=${Date.now()}`);
     const detailRaw = await response.json();
     let items = typeof detailRaw === 'string' ? JSON.parse(detailRaw) : detailRaw;
 
@@ -1582,22 +1633,43 @@ async function saveBayarPiutang(id, sisa) {
   showLoading(true);
   
   try { 
-    await fetch(WEB_APP_URL, { 
+    const response = await fetch(WEB_APP_URL, { 
       method: "POST", 
-      mode: "no-cors", 
       body: JSON.stringify(payload) 
     }); 
-isDataLoaded = false;
-isFullDataLoaded = false;
-    setTimeout(() => {
-      refreshData(); 
-      fetchPiutangList(); 
+    const result = await response.json();
+
+    if (result.status === "success") {
+      // 1. Reset state memori agar data benar-benar segar
+      isDataLoaded = false;
+      allTransactions = []; 
+
+      // 2. Jalankan refresh data saldo & history
+      await refreshData(); 
+
+      // 3. Perbarui daftar piutang aktif
+      if (typeof fetchPiutangList === 'function') {
+        await fetchPiutangList();
+        // PENTING: Inisialisasi ulang ikon Lucide agar tombol bisa diklik lagi
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+      }
+      
+      // 4. Update UI Riwayat jika sedang terbuka
+      if (activeTab === 'riwayat') {
+        renderTransactions();
+      }
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       showLoading(false);
-         }, 1500);
+    }
   } 
   catch(e) { 
     showLoading(false);
-    alert("Gagal memproses transaksi piutang."); 
+    console.error("Error:", e);
+    alert("Gagal memproses. Data akan di-refresh otomatis."); 
+    refreshData();
   } 
 }
 
