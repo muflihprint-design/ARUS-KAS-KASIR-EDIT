@@ -260,7 +260,7 @@ display: block !important;
   </nav>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxJOi4nKk_XMp7z9xFRMM2OTG1Y8s8q8_98erMAkYsqQIFYNnRfqyFZtisntPdZZu7OxA/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyMtCoNv1Y44HtPxxR8_BCM3gJWDI56zLmkMGqYUXev18HQpliGHBlwqewGa9NDaRomFg/exec";
 
     let allTransactions = [];
     let isDataLoaded = false;
@@ -547,8 +547,8 @@ async function checkManualDateChange() {
       renderTransactions();
     }
 
-   function showDetail(t) {
-  // 1. Sinkronisasi ID Modal sesuai fungsi closeModal Anda
+ function showDetail(t) {
+  // 1. Sinkronisasi ID Modal
   const overlay = document.getElementById('general-modal');
   const content = document.getElementById('modalContent');
   
@@ -558,17 +558,22 @@ async function checkManualDateChange() {
   }
 
   isDetailChanged = false;
-content.style.opacity = "0";
+  content.style.opacity = "0";
+  content.scrollTop = 0;
 
-    // LANGKAH 2: Reset scroll saat modal masih belum terlihat
-    content.scrollTop = 0;
-    
+  // --- LOGIKA PEMBATASAN EDIT ---
+  const isLatest = allTransactions.length > 0 && allTransactions[0].id === t.id;
+  const now = new Date();
+  const transactionTime = new Date(t.waktu);
+  const diffInMinutes = Math.floor((now - transactionTime) / 1000 / 60);
+  const isWithinTimeLimit = diffInMinutes < 10;
+  const canEdit = isLatest && isWithinTimeLimit;
+  // ------------------------------
 
   let labelSub = "Sub-keterangan";
   if (t.kat === 'PENJUALAN') labelSub = "Nama Pelanggan";
   if (t.kat === 'PEMBELIAN') labelSub = "Nama Supplier";
 
-  // 2. Proteksi & Parsing Detail (Mencegah error .map is not a function)
   let items = [];
   try {
     if (Array.isArray(t.detail)) {
@@ -608,8 +613,7 @@ content.style.opacity = "0";
               return `
               <tr class="${isChecked ? 'bg-green-50/50' : 'bg-white'} transition-colors">
                 <td class="p-2 text-center">
-                  <input type="checkbox" 
-                    ${isChecked ? 'checked' : ''} 
+                  <input type="checkbox" ${isChecked ? 'checked' : ''} 
                     class="w-4 h-4 cursor-pointer accent-green-600"
                     onchange="toggleItemCheck('${t.id}', ${index}, this.checked)">
                 </td>
@@ -670,13 +674,21 @@ content.style.opacity = "0";
         <div class="flex items-center gap-2 w-full">
           <input id="edit_sub_input" type="text" 
             value="${t.sub !== '-' ? t.sub : ''}" 
-            class="min-w-0 flex-1 p-2 border rounded-lg text-sm font-bold bg-white outline-none focus:ring-2 focus:ring-blue-100"
+            ${!canEdit ? 'disabled' : ''} 
+            class="min-w-0 flex-1 p-2 border rounded-lg text-sm font-bold ${!canEdit ? 'bg-slate-100 text-slate-400' : 'bg-white'} outline-none focus:ring-2 focus:ring-blue-100"
             placeholder="Input sub...">
+          
+          ${canEdit ? `
           <button onclick="updateSub('${t.id}')" 
             class="flex-shrink-0 bg-blue-600 text-white p-2 md:px-4 md:py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
             <i data-lucide="save" class="w-4 h-4"></i>
-            <span class="hidden md:inline">Simpan</span>
+            <span class="hidden md:inline">Simpan Sub</span>
           </button>
+          ` : `
+          <div class="text-[9px] text-slate-400 italic text-right leading-tight">
+            ${!isLatest ? 'Hanya data terbaru yang bisa diedit' : 'Waktu edit (10 mnt) habis'}
+          </div>
+          `}
         </div>
       </div>
       <div class="col-span-2 pt-2 border-t">
@@ -697,27 +709,124 @@ content.style.opacity = "0";
     
     ${detailHtml}
     
-    <div class="mt-6 grid ${t.kat && t.kat.toUpperCase() === 'PENJUALAN' ? 'grid-cols-2' : 'grid-cols-1'} gap-3">
-       <button onclick="closeModal()" class="py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition">
-         Tutup
-       </button>
-       ${t.kat && t.kat.toUpperCase() === 'PENJUALAN' ? `
-         <button onclick="shareNotaJPG('${t.id}', event)" class="py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2">
-            <i data-lucide="share-2" class="w-4 h-4"></i> Bagikan Nota (JPG)
+    <div class="mt-6 flex flex-col gap-3">
+       ${canEdit ? `
+         <button onclick="editToInputPage('${t.id}')" 
+           class="w-full py-3 bg-orange-50 text-orange-600 font-bold rounded-xl hover:bg-orange-100 transition flex items-center justify-center gap-2 border border-orange-200">
+           <i data-lucide="edit-3" class="w-4 h-4"></i> Muat Ulang ke Form Input
+         </button>
+       ` : ''}
+
+       <div class="grid ${t.kat && t.kat.toUpperCase() === 'PENJUALAN' ? 'grid-cols-2' : 'grid-cols-1'} gap-3">
+          <button onclick="closeModal()" class="py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition">
+            Tutup
           </button>
-        ` : ''}
+          ${t.kat && t.kat.toUpperCase() === 'PENJUALAN' ? `
+            <button onclick="shareNotaJPG('${t.id}', event)" class="py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2">
+               <i data-lucide="share-2" class="w-4 h-4"></i> Bagikan Nota
+             </button>
+          ` : ''}
+       </div>
     </div>
   `;
- // LANGKAH 4: Tampilkan modal
-    overlay.classList.remove('hidden');
-    overlay.style.display = 'flex';
 
-    // LANGKAH 5: Tampilkan kembali konten secara instan
-    content.style.opacity = "1";
-    
-    // Reset sekali lagi untuk memastikan (instan karena scroll-behavior: auto)
-    content.scrollTo(0, 0);
+  overlay.classList.remove('hidden');
+  overlay.style.display = 'flex';
+  content.style.opacity = "1";
+  content.scrollTo(0, 0);
+  
   if (window.lucide) lucide.createIcons();
+}
+
+ function editToInputPage(id) {
+  // 1. Cari data di memori
+  const t = allTransactions.find(item => item.id === id);
+  if (!t) return;
+
+  // 2. Parse detail barang jika ada
+  let items = [];
+  try {
+    items = typeof t.detail === 'string' ? JSON.parse(t.detail) : (t.detail || []);
+  } catch (e) { console.error("Gagal parsing detail", e); }
+
+  const kat = t.kat.toUpperCase();
+
+  // 3. LOGIKA MAPPING BERDASARKAN KATEGORI
+  if (kat === 'PENJUALAN') {
+    changeTab('penjualan'); // Render Form Penjualan
+    
+    // Isi field Pelanggan & Metode
+    document.getElementById('p_cust').value = t.sub === '-' ? '' : t.sub;
+    document.getElementById('p_metode').value = t.metode;
+    document.getElementById('p_disc').value = formatRibuan(t.diskon || 0);
+    document.getElementById('p_dp').value = formatRibuan(t.masuk || 0);
+
+    // Masukkan barang ke keranjang (cart)
+    cart = items.map(item => ({
+      nama: item.nama,
+      qty: item.qty,
+      harga: item.harga,
+      total: item.qty * item.harga
+    }));
+    
+    renderCart(); // Tampilkan barang di UI
+    calcTotal();  // Hitung ulang total akhir
+
+  } else if (kat === 'PEMBELIAN') {
+    changeTab('pembelian'); // Render Form Pembelian
+    
+    document.getElementById('b_supp').value = t.sub === '-' ? '' : t.sub;
+    document.getElementById('b_metode').value = t.metode;
+    document.getElementById('b_dp').value = formatRibuan(t.keluar || 0);
+
+    cart = items.map(item => ({
+      nama: item.nama,
+      qty: item.qty,
+      harga: item.harga,
+      total: item.qty * item.harga
+    }));
+    
+    renderCart();
+    calcTotal();
+
+  } else if (kat === 'OPERASIONAL' || kat === 'PENGEMBALIAN DANA') {
+    changeTab('operasional'); // Render Form Operasional
+    
+    document.getElementById('op_metode').value = t.metode;
+    document.getElementById('op_nom').value = formatRibuan(t.keluar || t.masuk);
+    document.getElementById('op_ket').value = t.ket;
+    
+    // Cek jika ini refund
+    if (kat === 'PENGEMBALIAN DANA') {
+      document.getElementById('is_refund').checked = true;
+    }
+
+  } else if (kat === 'TRANSFER SALDO') {
+    // Karena transfer ada di dalam tab 'lainnya', kita buka tabnya dulu
+    changeTab('lainnya');
+    
+    // Panggil form transfer secara manual (mengasumsikan fungsi showMenuAction tersedia)
+    if (typeof showMenuAction === 'function') {
+      showMenuAction('TRANSFER');
+      
+      // Tunggu sebentar agar DOM form transfer muncul
+      setTimeout(() => {
+        if (document.getElementById('tf_nom')) {
+          document.getElementById('tf_nom').value = formatRibuan(t.keluar || t.masuk);
+          document.getElementById('tf_ket').value = t.ket;
+        }
+      }, 100);
+    }
+  }
+
+  // 4. SIMPAN ID LAMA UNTUK OVERWRITE SAAT SAVE
+  window.editingTransactionId = t.id;
+  
+  // Tutup modal detail agar user bisa fokus ke form
+  if (typeof closeModal === 'function') closeModal();
+  
+  // Scroll ke paling atas agar form terlihat jelas
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
     
     async function refreshData() {
@@ -1133,13 +1242,20 @@ function addItem(autoOpen = true) {
       return itemsData;
     }
 
-   async function runScript(actionName, payload, stayInTab) {
+async function runScript(actionName, payload, stayInTab) {
   const btn = document.querySelector('button[onclick*="save"]');
   if (btn) btn.disabled = true;
   showLoading(true);
 
+  // --- INTEGRASI EDIT MODE ---
+  // Jika sedang dalam mode edit, tambahkan ID lama ke dalam payload
+  if (window.editingTransactionId) {
+    payload.oldId = window.editingTransactionId;
+  }
+  // ---------------------------
+
   try {
-    // HAPUS mode: "no-cors" agar bisa membaca respon JSON
+    // Menggunakan fetch standar untuk membaca respon JSON dari Apps Script
     const response = await fetch(WEB_APP_URL, {
       method: "POST",
       body: JSON.stringify(payload)
@@ -1148,25 +1264,39 @@ function addItem(autoOpen = true) {
     const result = await response.json();
 
     if (result.status === 'success') {
-      // Masukkan data baru ke memori agar riwayat langsung terupdate
+      // 1. Jika ini adalah hasil edit (overwrite), hapus data lama dari memori lokal
+      if (payload.oldId && typeof allTransactions !== 'undefined') {
+        allTransactions = allTransactions.filter(t => t.id !== payload.oldId);
+      }
+
+      // 2. Masukkan data baru ke urutan teratas memori lokal
       if (result.data && typeof allTransactions !== 'undefined') {
         allTransactions.unshift(result.data);
       }
 
-      // Reset flag agar fetch selanjutnya mengambil data terbaru
+      // 3. Reset mode edit setelah berhasil
+      window.editingTransactionId = null;
+
+      // Reset flag agar fetch selanjutnya sinkron dengan server
       isDataLoaded = false;
       isFullDataLoaded = false;
 
-      // Berikan feedback instan tanpa menunggu 1.2 detik penuh
       showLoading(false);
       if (btn) btn.disabled = false;
       
-      // Pindah ke tab riwayat agar user melihat datanya sudah masuk
-      changeTab('riwayat');
+      // Feedback visual & pindah halaman
+      if (!stayInTab) {
+        changeTab('riwayat');
+      }
       
-      // Refresh background data
+      // Refresh background data untuk sinkronisasi stok dan saldo
       refreshData();
-      fetchMasterStock();
+      if (typeof fetchMasterStock === 'function') fetchMasterStock();
+      
+      // Notifikasi sukses (opsional)
+      const msg = payload.oldId ? "Data berhasil diperbarui!" : "Data berhasil disimpan!";
+      console.log(msg);
+
     } else {
       throw new Error(result.message || "Gagal menyimpan");
     }
@@ -1174,14 +1304,17 @@ function addItem(autoOpen = true) {
   } catch (err) {
     showLoading(false);
     if (btn) btn.disabled = false;
-    // Jika masih gagal baca JSON karena CORS, minimal kita paksa refresh setelah jeda
+    
     console.error("Fetch error:", err);
-    setTimeout(() => {
-       location.reload(); 
-    }, 1000);
+    
+    // Jika error karena CORS tapi data sebenarnya masuk, atau error koneksi
+    // Kita berikan konfirmasi ke user sebelum reload
+    if (confirm("Terjadi kendala koneksi atau sinkronisasi. Muat ulang halaman untuk memastikan data?")) {
+      location.reload();
+    }
   }
 }
-
+    
     function savePenjualan() {
       const items = collectItems();
       if(items.length === 0) return alert("Pilih barang terlebih dahulu!");
@@ -2123,6 +2256,82 @@ function printNota(id) {
     // Setelah print selesai (atau dibatalkan), sembunyikan kembali
     printArea.classList.add('hidden');
   }, 300);
+}
+
+    async function updateSub(transactionId) {
+  // 1. VALIDASI KEAMANAN (Data Terbaru & Batas Waktu)
+  const t = allTransactions.find(item => item.id === transactionId);
+  const isLatest = allTransactions.length > 0 && allTransactions[0].id === transactionId;
+  
+  // Hitung selisih waktu
+  const now = new Date();
+  const transactionTime = new Date(t.waktu);
+  const diffInMinutes = Math.floor((now - transactionTime) / 1000 / 60);
+  const isWithinTimeLimit = diffInMinutes < 10;
+
+  if (!isLatest || !isWithinTimeLimit) {
+    const alasan = !isLatest ? "bukan data terbaru" : "waktu edit (10 mnt) sudah habis";
+    alert(`Maaf, data tidak dapat diperbarui karena ${alasan}.`);
+    return;
+  }
+
+  const newSub = document.getElementById('edit_sub_input').value.trim() || '-';
+  
+  // Animasi Loading pada tombol
+  // Menggunakan event.currentTarget secara aman
+  const btn = event ? event.currentTarget : null;
+  let originalHtml = "";
+  if (btn) {
+    originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>';
+  }
+
+  try {
+    // Menyiapkan data yang akan dikirim
+    const payload = {
+      action: "updateTransactionSub",
+      transactionId: transactionId,
+      newSub: newSub
+    };
+
+    await fetch(WEB_APP_URL, {
+      method: "POST",
+      mode: "no-cors", 
+      cache: "no-cache",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    // Karena menggunakan no-cors, kita beri jeda sedikit agar server selesai memproses
+    setTimeout(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+      
+      // Feedback visual sukses
+      const statusText = document.createElement('div');
+      statusText.className = "fixed top-10 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-lg z-[9999] animate-bounce";
+      statusText.innerText = "✓ Berhasil Diperbarui";
+      document.body.appendChild(statusText);
+
+      setTimeout(() => {
+        statusText.remove();
+        closeModal();
+        refreshData(); // Mengambil data terbaru dari Google Sheets
+      }, 1500);
+      
+    }, 1200);
+
+  } catch (err) {
+    console.error("Gagal update sub:", err);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+    alert("Terjadi kesalahan koneksi.");
+  }
 }
     
     window.onload = () => {
